@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İcra Taahhüt ve Hesaplama Modülü V3.1 - UYAP Veri Giriş Güncellemeli</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+    <header class="bg-slate-900 text-white shadow-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-amber-600 p-2 rounded-lg text-white font-bold text-xl">⚖️</div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Hukuk Ofisi İcra & Taahhüt Otomasyonu</h1>
+                    <p class="text-xs text-slate-400">V3.1 - UYAP Veri Giriş Entegrasyonlu (V2.8 Tabanlı OCR)</p>
+                </div>
+            </div>
+            <div class="text-sm bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300">
+                Durum: <span class="text-emerald-400 font-semibold">Aktif (V3.1)</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- SOL KOLON: Girdiler ve Hesaplama -->
+        <div class="lg:col-span-6 space-y-6">
+            
+            <!-- EKRAN GÖRÜNTÜSÜ YÜKLEME PANELİ (V2.8 GÜNCELLEMESİ) -->
+            <div class="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-xl shadow-xs border border-amber-200">
+                <h2 class="text-lg font-semibold text-amber-900 mb-2 flex items-center gap-2">
+                    <span>📸</span> UYAP Takip Talebi Ekran Görüntüsünden Akıllı Otomatik Doldurma
+                </h2>
+                <p class="text-xs text-amber-700 mb-4">
+                    Takip talebi ekran görüntüsünü buraya sürükleyip bırakın ya da tıklayarak seçin. Ana para, faiz oranları, akdi faiz, işlemiş faiz, ihtarname masrafı ve BSMV, görüntüdeki etiketlerine göre otomatik yerleştirilir.
+                </p>
+
+                <div class="mb-4 bg-white/70 border border-amber-200 rounded-lg p-3">
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Gemini API Anahtarı (sadece bu tarayıcıda saklanır)</label>
+                    <div class="flex gap-2">
+                        <input type="password" id="geminiApiKey" placeholder="AIza..." class="flex-1 px-2 py-1.5 border border-slate-300 rounded text-xs">
+                        <button type="button" onclick="apiAnahtariniKaydet()" class="text-xs bg-slate-700 hover:bg-slate-800 text-white font-medium py-1.5 px-3 rounded transition">Kaydet</button>
+                    </div>
+                    <div class="text-[10px] text-slate-500 mt-1">Anahtarınız yoksa <a href="https://aistudio.google.com/apikey" target="_blank" class="underline">aistudio.google.com/apikey</a> adresinden alabilirsiniz. Görüntü, işlenmek üzere Google Gemini API'sine gönderilir.</div>
+                </div>
+
+                <div id="dropZone" class="border-2 border-dashed border-amber-300 bg-white/80 rounded-xl p-5 text-center hover:bg-white transition cursor-pointer relative" onclick="document.getElementById('ekranDosyaInput').click()">
+                    <input type="file" id="ekranDosyaInput" accept="image/*" class="hidden" onchange="gorseltenVeriOku(this.files[0])">
+                    <div class="space-y-2 pointer-events-none">
+                        <div class="text-3xl">📁</div>
+                        <div class="text-xs font-semibold text-slate-700" id="yuklemeDurumMetni">Görsel Seçmek için Tıklayın veya Sürükleyip Bırakın</div>
+                        <div class="text-[10px] text-slate-500">PNG, JPG formatları desteklenir</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dosya Bilgileri -->
+            <div class="bg-white p-6 rounded-xl shadow-xs border border-slate-200">
+                <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <span>📁</span> Dosya ve Taraf Bilgileri
+                </h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Dosya No</label>
+                        <input type="text" id="dosyaNo" value="" placeholder="2026/1234 E." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">İcra Dairesi</label>
+                        <input type="text" id="icraDairesi" value="" placeholder="İSTANBUL 1. İCRA MÜDÜRLÜĞÜ" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Borçlu Adı Soyadı / Unvanı</label>
+                        <input type="text" id="borcluAdi" value="" placeholder="AD SOYAD" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Borçlu T.C. / VKN</label>
+                        <input type="text" id="borcluTc" value="" placeholder="12345678901" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Taahhüt Tarihi</label>
+                        <input type="date" id="taahhutTarihi" value="" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="hesaplaVeGuncelle()">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Takip / Başlangıç Tarihi</label>
+                        <input type="date" id="takipTarihi" value="" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="hesaplaVeGuncelle()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Belge Kalemleri -->
+            <div class="bg-white p-6 rounded-xl shadow-xs border border-slate-200">
+                <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <span>💰</span> Belge Alacak ve Masraf Kalemleri
+                </h2>
+                <div class="grid grid-cols-2 gap-4">
+                    
+                    <div class="col-span-2 bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3">
+                        <span class="text-xs font-bold text-slate-700 block">Takip Açılış / Başlangıç Kalemleri (UYAP Entegre)</span>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="col-span-2">
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Hesap / Kredi No</label>
+                                <input type="text" id="hesapNo" value="" placeholder="5578292293271718" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Ana Para (TL)</label>
+                                <input type="text" id="asilAlacak" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Temerrüt / Yıllık Faiz Oranı (%)</label>
+                                <input type="text" id="yillikFaizOrani" value="" placeholder="0" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-amber-800" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Akdi Faiz (TL)</label>
+                                <input type="text" id="akdiFaiz" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Akdi Faiz Oranı (%)</label>
+                                <input type="text" id="akdiFaizOrani" value="" placeholder="0" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Akdi Faiz Başlangıç Tarihi</label>
+                                <input type="date" id="akdiFaizBaslangic" value="" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Hesap Kesim Tarihi (Akdi Faiz Bitiş / İşlemiş Faiz Başlangıç)</label>
+                                <input type="date" id="hesapKesimTarihi" value="" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Takip Öncesi İşlemiş Faiz (TL)</label>
+                                <input type="text" id="islemişFaiz" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">İhtarname Masrafı (TL)</label>
+                                <input type="text" id="ihtarnameMasrafi" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">BSMV Toplamı (TL)</label>
+                                <input type="text" id="bsmv" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-span-2 bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3">
+                        <span class="text-xs font-bold text-slate-700 block">Takip Tarihinden Taahhüt Tarihine Kadar Olan Bölüm</span>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="col-span-2">
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">İşlemiş Faiz ve BSMV (Takip -> Taahhüt) (TL)</label>
+                                <input type="text" id="takipTaahhutArasiFaiz" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-amber-900" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Vekalet Ücreti (TL)</label>
+                                <input type="text" id="vekaletUcreti" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Başvuru Harcı (TL)</label>
+                                <input type="text" id="basvuruHarcı" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Peşin Harç (TL)</label>
+                                <input type="text" id="pesinHarc" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Tahsil Harcı (TL)</label>
+                                <input type="text" id="tahsilHarci" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Tahsil Harcı Oranı (%) — bilgi amaçlı</label>
+                                <input type="text" id="tahsilHarciOrani" value="" placeholder="0" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Ödeme Emri Tebligat Gideri (TL)</label>
+                                <input type="text" id="tebligatGideri" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Masraf Avansı (TL)</label>
+                                <input type="text" id="masrafAvansi" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Taksit ve Faiz Paneli -->
+            <div class="bg-white p-6 rounded-xl shadow-xs border border-slate-200">
+                <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <span>📈</span> Taksit Planı ve Detaylı Faiz Hesaplama
+                </h2>
+
+                <div class="border-t pt-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-xs font-bold text-slate-700">Taksitler (Ara taksitleri girip son taksiti boş bırakın)</label>
+                    </div>
+                    
+                    <div id="taksitKademeleriListesi" class="space-y-2 mb-3 max-h-56 overflow-y-auto pr-1">
+                        <!-- Dinamik satırlar -->
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button type="button" onclick="kademeEkle()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-1.5 px-3 rounded-lg transition">+ Taksit Ekle</button>
+                    </div>
+                </div>
+
+                <button type="button" onclick="kalaniDoldurVeHesapla()" class="w-full mt-6 bg-amber-600 hover:bg-amber-700 text-white font-medium py-2.5 px-4 rounded-lg transition duration-150 text-sm shadow-sm flex items-center justify-center gap-2">
+                    <span>✨</span> Kalanı Doldur ve Hesapla (Tüm Dönem Faizi Dahil)
+                </button>
+            </div>
+
+        </div>
+
+        <!-- SAĞ KOLON: Canlı Önizleme ve Word Çıktı -->
+        <div class="lg:col-span-6 space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-xs border border-slate-200 sticky top-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                        <span>📄</span> Taahhüt Belgesi Canlı Önizlemesi
+                    </h2>
+                    <button type="button" onclick="wordIndir()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150 text-sm shadow-sm flex items-center gap-2">
+                        <span>📥</span> Word (DOCX) İndir
+                    </button>
+                </div>
+
+                <div id="onizlemeKutusu" class="border border-slate-200 bg-slate-50 p-6 rounded-lg text-xs leading-relaxed space-y-3 font-mono text-slate-700 max-h-[600px] overflow-y-auto">
+                    <!-- Dinamik içerik -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function parseTrNumber(val) {
+            if (!val) return 0;
+            if (typeof val === 'number') return val;
+            let clean = val.toString().trim();
+            if (clean.includes('.') && clean.includes(',')) {
+                clean = clean.replace(/\./g, '').replace(',', '.');
+            } else if (clean.includes(',')) {
+                clean = clean.replace(',', '.');
+            } else if (clean.includes('.')) {
+                let parts = clean.split('.');
+                if (parts.length === 2 && parts[1].length === 3) {
+                    clean = clean.replace(/\./g, '');
+                }
+            }
+            let num = parseFloat(clean);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function formatTrCurrency(num) {
+            return num.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // Sürükle Bırak ve Tıklama Event Dinleyicileri
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropZone = document.getElementById('dropZone');
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.add('bg-amber-100', 'border-amber-500');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.remove('bg-amber-100', 'border-amber-500');
+                }, false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files && files.length > 0) {
+                    gorseltenVeriOku(files[0]);
+                }
+            }, false);
+
+            const kayitliAnahtar = localStorage.getItem('geminiApiKey');
+            if (kayitliAnahtar) {
+                document.getElementById('geminiApiKey').value = kayitliAnahtar;
+            }
+
+            kademeleriBaslat();
+            hesaplaVeGuncelle();
+        });
+
+        function apiAnahtariniKaydet() {
+            const key = document.getElementById('geminiApiKey').value.trim();
+            if (!key) {
+                alert("Lütfen bir API anahtarı girin.");
+                return;
+            }
+            localStorage.setItem('geminiApiKey', key);
+            alert("API anahtarı bu tarayıcıda kaydedildi.");
+        }
+
+        // Gemini Vision API ile UYAP takip talebi ekran görüntüsünden veri çıkarımı
+        async function gorseltenVeriOku(file) {
+            if (!file) return;
+
+            const durumMetni = document.getElementById('yuklemeDurumMetni');
+            const apiKey = (document.getElementById('geminiApiKey').value || '').trim();
+
+            if (!apiKey) {
+                durumMetni.innerHTML = `<span class="text-red-600 font-bold">⚠️ Önce yukarıdan Gemini API anahtarınızı girip "Kaydet"e basın.</span>`;
+                return;
+            }
+
+            durumMetni.innerHTML = `<span class="text-amber-600 font-bold">📂 "${file.name}" Gemini ile analiz ediliyor...</span>`;
+
+            try {
+                const base64Data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = () => reject(new Error("Dosya okunamadı."));
+                    reader.readAsDataURL(file);
+                });
+
+                const promptText = `Bu görüntü bir UYAP icra takip talebi ekran görüntüsüdür. Görüntüde, yanındaki etiketiyle birlikte açıkça yazan şu tutarları bul:
+- Asıl Alacak / Ana Para (TL)
+- Takip çıkış / Temerrüt Yıllık Faiz Oranı (sadece yüzde sayısı, örn. 54.6)
+- Akdi Faiz (TL)
+- Takip Öncesi İşlemiş Faiz (TL)
+- İhtarname Masrafı / Bildirim Masrafı (TL)
+- BSMV Toplamı (TL)
+
+Sadece görüntüde açıkça yazılı olan değerleri kullan, tahmin yürütme veya uydurma. Bir kalem görüntüde yoksa 0 döndür. Tüm tutarları ondalık ayıracı nokta olan, binlik ayraç İÇERMEYEN düz sayı olarak döndür (örn. 941931.11, "941.931,11" değil).`;
+
+                const requestBody = {
+                    contents: [{
+                        parts: [
+                            { text: promptText },
+                            { inline_data: { mime_type: file.type || "image/png", data: base64Data } }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                asilAlacak: { type: "NUMBER" },
+                                yillikFaizOrani: { type: "NUMBER" },
+                                akdiFaiz: { type: "NUMBER" },
+                                islemisFaiz: { type: "NUMBER" },
+                                ihtarnameMasrafi: { type: "NUMBER" },
+                                bsmv: { type: "NUMBER" }
+                            },
+                            required: ["asilAlacak", "yillikFaizOrani", "akdiFaiz", "islemisFaiz", "ihtarnameMasrafi", "bsmv"]
+                        }
+                    }
+                };
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`Gemini API hatası (${response.status}): ${errText.slice(0, 200)}`);
+                }
+
+                const result = await response.json();
+                const textPart = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!textPart) {
+                    throw new Error("Gemini yanıtında veri bulunamadı.");
+                }
+
+                const veri = JSON.parse(textPart);
+
+                document.getElementById('asilAlacak').value = formatTrCurrency(Number(veri.asilAlacak) || 0);
+                document.getElementById('yillikFaizOrani').value = String(veri.yillikFaizOrani ?? 0);
+                document.getElementById('akdiFaiz').value = formatTrCurrency(Number(veri.akdiFaiz) || 0);
+                document.getElementById('islemişFaiz').value = formatTrCurrency(Number(veri.islemisFaiz) || 0);
+                document.getElementById('ihtarnameMasrafi').value = formatTrCurrency(Number(veri.ihtarnameMasrafi) || 0);
+                document.getElementById('bsmv').value = formatTrCurrency(Number(veri.bsmv) || 0);
+
+                durumMetni.innerHTML = `<span class="text-emerald-600 font-bold">✅ Görsel okundu, kalemler yerleştirildi. Rakamları orijinal görüntüyle karşılaştırıp doğrulamanız önerilir.</span>`;
+                hesaplaVeGuncelle();
+            } catch (err) {
+                console.error(err);
+                durumMetni.innerHTML = `<span class="text-red-600 font-bold">❌ Görsel okunamadı: ${err.message}</span>`;
+            }
+        }
+
+        function kademeleriBaslat() {
+            const liste = document.getElementById('taksitKademeleriListesi');
+            if (!liste) return;
+            liste.innerHTML = `
+                <div class="grid grid-cols-12 gap-2 items-center kademe-satir is-son-taksit">
+                    <div class="col-span-4">
+                        <input type="text" placeholder="Tarih (GG.AA.YYYY)" value="" class="taksit-tarih w-full px-2 py-1.5 border border-slate-300 rounded text-xs" oninput="hesaplaVeGuncelle()">
+                    </div>
+                    <div class="col-span-7 relative">
+                        <input type="text" placeholder="Boş bırakın" value="" class="taksit-tutar w-full px-2 py-1.5 border border-slate-300 rounded text-xs bg-amber-50/50" oninput="hesaplaVeGuncelle()">
+                        <span class="absolute right-2 top-1.5 text-[10px] text-amber-600 font-semibold pointer-events-none">Son Taksit</span>
+                    </div>
+                    <div class="col-span-1 text-center">
+                        <button type="button" onclick="kademeSil(this)" class="text-red-500 font-bold hover:text-red-700">✕</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function kademeEkle() {
+            const liste = document.getElementById('taksitKademeleriListesi');
+            const sonTaksitSatiri = liste.querySelector('.is-son-taksit');
+
+            const div = document.createElement('div');
+            div.className = "grid grid-cols-12 gap-2 items-center kademe-satir";
+            div.innerHTML = `
+                <div class="col-span-4">
+                    <input type="text" placeholder="Tarih (GG.AA.YYYY)" value="" class="taksit-tarih w-full px-2 py-1.5 border border-slate-300 rounded text-xs" oninput="hesaplaVeGuncelle()">
+                </div>
+                <div class="col-span-7 relative">
+                    <input type="text" placeholder="Tutar (TL)" value="" class="taksit-tutar w-full px-2 py-1.5 border border-slate-300 rounded text-xs" oninput="hesaplaVeGuncelle()">
+                </div>
+                <div class="col-span-1 text-center">
+                    <button type="button" onclick="kademeSil(this)" class="text-red-500 font-bold hover:text-red-700">✕</button>
+                </div>
+            `;
+
+            if (sonTaksitSatiri) {
+                liste.insertBefore(div, sonTaksitSatiri);
+            } else {
+                liste.appendChild(div);
+            }
+            hesaplaVeGuncelle();
+        }
+
+        function kademeSil(btn) {
+            const satir = btn.closest('.kademe-satir');
+            if (satir.classList.contains('is-son-taksit')) {
+                alert("Son taksit satırı tamamen silinemez.");
+                return;
+            }
+            satir.remove();
+            hesaplaVeGuncelle();
+        }
+
+        function parseDateString(str) {
+            if (!str) return null;
+            let parts = str.trim().split('.');
+            if (parts.length === 3) {
+                let day = parseInt(parts[0], 10);
+                let month = parseInt(parts[1], 10) - 1;
+                let year = parseInt(parts[2], 10);
+                let d = new Date(year, month, day);
+                if (!isNaN(d.getTime()) && d.getDate() === day && d.getMonth() === month && d.getFullYear() === year) {
+                    return d;
+                }
+                return null;
+            }
+            let isoD = new Date(str);
+            return isNaN(isoD.getTime()) ? null : isoD;
+        }
+
+        function getDaysBetween(date1, date2) {
+            if (!date1 || !date2) return 0;
+            const diffTime = date2.getTime() - date1.getTime();
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays > 0 ? diffDays : 0;
+        }
+
+        function formatDateInputTr(isoVal) {
+            if (!isoVal) return "";
+            const d = new Date(isoVal);
+            return isNaN(d.getTime()) ? "" : d.toLocaleDateString('tr-TR');
+        }
+
+        function turkceSiraSayi(n) {
+            const birler = ["", "birinci", "ikinci", "üçüncü", "dördüncü", "beşinci", "altıncı", "yedinci", "sekizinci", "dokuzuncu"];
+            const onlar = ["", "onuncu", "yirminci", "otuzuncu", "kırkıncı", "ellinci", "altmışıncı", "yetmişinci", "sekseninci", "doksanıncı"];
+            const onlarKok = ["", "on", "yirmi", "otuz", "kırk", "elli", "altmış", "yetmiş", "seksen", "doksan"];
+            if (!Number.isInteger(n) || n <= 0) return `${n}.`;
+            if (n < 10) return birler[n];
+            if (n === 100) return "yüzüncü";
+            if (n < 100) {
+                const on = Math.floor(n / 10);
+                const bir = n % 10;
+                return bir === 0 ? onlar[on] : `${onlarKok[on]} ${birler[bir]}`;
+            }
+            return `${n}.`;
+        }
+
+        function hesaplaVeGuncelle() {
+            const asilAlacak = parseTrNumber(document.getElementById('asilAlacak').value);
+            const yillikFaizOrani = parseTrNumber(document.getElementById('yillikFaizOrani').value);
+            const akdiFaiz = parseTrNumber(document.getElementById('akdiFaiz').value);
+            const islemişFaiz = parseTrNumber(document.getElementById('islemişFaiz').value);
+            const ihtarnameMasrafi = parseTrNumber(document.getElementById('ihtarnameMasrafi').value);
+            const bsmv = parseTrNumber(document.getElementById('bsmv').value);
+            const hesapNo = document.getElementById('hesapNo').value;
+            const akdiFaizOrani = parseTrNumber(document.getElementById('akdiFaizOrani').value);
+            const akdiFaizBaslangicVal = document.getElementById('akdiFaizBaslangic').value;
+            const hesapKesimTarihiVal = document.getElementById('hesapKesimTarihi').value;
+
+            const takipTaahhutArasiFaiz = parseTrNumber(document.getElementById('takipTaahhutArasiFaiz').value);
+            const vekaletUcreti = parseTrNumber(document.getElementById('vekaletUcreti').value);
+            const basvuruHarcı = parseTrNumber(document.getElementById('basvuruHarcı').value);
+            const pesinHarc = parseTrNumber(document.getElementById('pesinHarc').value);
+            const tahsilHarci = parseTrNumber(document.getElementById('tahsilHarci').value);
+            const tahsilHarciOrani = parseTrNumber(document.getElementById('tahsilHarciOrani').value);
+            const tebligatGideri = parseTrNumber(document.getElementById('tebligatGideri').value);
+            const masrafAvansi = parseTrNumber(document.getElementById('masrafAvansi').value);
+
+            const borcluAdi = document.getElementById('borcluAdi').value;
+            const dosyaNo = document.getElementById('dosyaNo').value;
+            const icraDairesi = document.getElementById('icraDairesi').value;
+            const taahhutTarihiVal = document.getElementById('taahhutTarihi').value;
+            const takipTarihiVal = document.getElementById('takipTarihi').value;
+
+            const akdiFaizBaslangicStr = formatDateInputTr(akdiFaizBaslangicVal);
+            const hesapKesimTarihiStr = formatDateInputTr(hesapKesimTarihiVal);
+            const takipTarihiStr = formatDateInputTr(takipTarihiVal);
+
+            const toplamAlacak = asilAlacak + akdiFaiz + islemişFaiz + ihtarnameMasrafi + bsmv;
+            const toplamHarc = basvuruHarcı + pesinHarc + tahsilHarci;
+            const toplamMasraf = tebligatGideri + masrafAvansi;
+
+            let taahhutDate = taahhutTarihiVal ? new Date(taahhutTarihiVal) : new Date();
+            let gunlukFaizOrani = (yillikFaizOrani / 100) / 365;
+
+            let kademeSatirlari = document.querySelectorAll('.kademe-satir');
+            let taksitListesiData = [];
+
+            kademeSatirlari.forEach(satir => {
+                const tarihVal = satir.querySelector('.taksit-tarih').value.trim();
+                const tutarVal = satir.querySelector('.taksit-tutar').value.trim();
+                let valNum = parseTrNumber(tutarVal);
+                taksitListesiData.push({
+                    tarihStr: tarihVal,
+                    tarihObj: parseDateString(tarihVal),
+                    tutar: valNum,
+                    isEmp: (tutarVal === "")
+                });
+            });
+
+            let aktifAnapara = asilAlacak;
+            let toplamFaizHam = 0;
+            let oncekiTarih = taahhutDate;
+            let baslangicTarihiStr = taahhutDate.toLocaleDateString('tr-TR');
+            let sonTaksitTarihiStr = "";
+            let uyarilar = [];
+
+            taksitListesiData.forEach((taksit, idx) => {
+                if (taksit.tarihStr && !taksit.tarihObj) {
+                    uyarilar.push(`${idx + 1}. taksit satırındaki tarih ("${taksit.tarihStr}") geçersiz biçimde girilmiş, bu satır faiz hesabına dahil edilmedi.`);
+                    return;
+                }
+                if (taksit.tarihObj) {
+                    if (taksit.tarihObj.getTime() < oncekiTarih.getTime()) {
+                        uyarilar.push(`${idx + 1}. taksit tarihi ("${taksit.tarihStr}") kendinden önceki tarihten daha eskiye düşüyor, taksitler kronolojik sırada değil.`);
+                    }
+                    sonTaksitTarihiStr = taksit.tarihStr;
+                    let gunSayisi = getDaysBetween(oncekiTarih, taksit.tarihObj);
+                    let donemFaizi = aktifAnapara * gunlukFaizOrani * gunSayisi;
+                    toplamFaizHam += donemFaizi;
+
+                    let dusulecekTutar = taksit.isEmp ? 0 : taksit.tutar;
+                    aktifAnapara = Math.max(0, aktifAnapara - dusulecekTutar);
+                    oncekiTarih = taksit.tarihObj;
+                }
+            });
+
+            let toplamTaahhutSonrasiFaizVergili = toplamFaizHam * 1.05;
+
+            const guncelBakiye = toplamAlacak + takipTaahhutArasiFaiz + vekaletUcreti + toplamHarc + toplamMasraf;
+            const toplamOdenecekMeblag = guncelBakiye + toplamTaahhutSonrasiFaizVergili;
+
+            let taahhutTarihiFormatli = taahhutDate.toLocaleDateString('tr-TR');
+            let bitisTarihiStr = sonTaksitTarihiStr || taahhutTarihiFormatli;
+
+            const hesapNoOnEk = hesapNo ? `${hesapNo} - ` : "";
+            const akdiFaizAralik = (akdiFaizBaslangicStr || hesapKesimTarihiStr) ? ` (${akdiFaizBaslangicStr}-${hesapKesimTarihiStr})` : "";
+            const islemisFaizAralik = (hesapKesimTarihiStr || takipTarihiStr) ? ` (${hesapKesimTarihiStr}-${takipTarihiStr})` : "";
+            const araDonemAralik = takipTarihiStr ? ` (${takipTarihiStr}-${taahhutTarihiFormatli} TARİHLERİ ARASI)` : "";
+            const tahsilHarciOraniStr = tahsilHarciOrani ? ` ( %${tahsilHarciOrani} )` : "";
+
+            const gecerliTaksitler = taksitListesiData.filter(t => t.tarihObj);
+            let acilisCumlesi = "";
+            if (gecerliTaksitler.length >= 1 && gecerliTaksitler[0].tutar > 0) {
+                const ilkTaksit = gecerliTaksitler[0];
+                const siraYazi = turkceSiraSayi(gecerliTaksitler.length);
+                acilisCumlesi = `Alacaklı vekili ve borçlu birlikte geldiler, Borçlu söz aldı, ben hakkımda yapılan icra takibinden haberdarım, takibe ve borca bir itirazım yoktur. Hakkımda işleyecek sürelerden feragat ediyorum. Takibin kesinleştirilmesini istiyorum. Ben dosya borcumu ${ilkTaksit.tarihStr} tarihinden itibaren aylık ${formatTrCurrency(ilkTaksit.tutar)} TL taksitler halinde, ${siraYazi} taksitte ${bitisTarihiStr}’de kalan dosya borcunun tamamını kapatacağım. Dosya hesabı çıkarılsın dedi. Dosya hesabına geçildi.`;
+            }
+
+            let uyariHtml = "";
+            if (uyarilar.length > 0) {
+                uyariHtml = `<div class="mb-3 p-2 rounded bg-red-50 border border-red-300 text-red-700 text-[11px] space-y-1">
+                    ${uyarilar.map(u => `<div>⚠️ ${u}</div>`).join('')}
+                </div>`;
+            }
+
+            let html = `
+                ${uyariHtml}
+                <div class="text-center font-bold mb-3">T.C.<br>${icraDairesi}<br>DOSYA NO: ${dosyaNo}</div>
+                ${acilisCumlesi ? `<p class="mb-3">${acilisCumlesi}</p>` : ""}
+                <div class="space-y-1 font-mono text-slate-800">
+                    <div><b>${formatTrCurrency(asilAlacak)}</b> TL ${hesapNoOnEk}Asıl Alacak (Temerrüt Faiz Oranı %${yillikFaizOrani}'dır.)</div>
+                    <div><b>${formatTrCurrency(akdiFaiz)}</b> TL ${hesapNoOnEk}Akdi Faiz${akdiFaizOrani ? ' %' + akdiFaizOrani : ''}${akdiFaizAralik}</div>
+                    <div><b>${formatTrCurrency(islemişFaiz)}</b> TL ${hesapNoOnEk}İşlemiş Faiz${yillikFaizOrani ? ' %' + yillikFaizOrani : ''}${islemisFaizAralik}</div>
+                    <div><b>${formatTrCurrency(bsmv)}</b> TL ${hesapNoOnEk}BSMV %5 Toplamı</div>
+                    <div><b>${formatTrCurrency(ihtarnameMasrafi)}</b> TL İhtarname Masrafları</div>
+                    <div class="border-b border-slate-300 pb-1 font-bold"><b>${formatTrCurrency(toplamAlacak)}</b> TL Toplam Alacak</div>
+
+                    <div class="pt-2"><b>${formatTrCurrency(vekaletUcreti)}</b> TL VEKALET ÜCRETİ</div>
+                    <div><b>${formatTrCurrency(takipTaahhutArasiFaiz)}</b> TL İŞLEMİŞ FAİZ VE BSMV${araDonemAralik}</div>
+                    <div><b>${formatTrCurrency(basvuruHarcı)}</b> TL BAŞVURMA HARCI</div>
+                    <div><b>${formatTrCurrency(pesinHarc)}</b> TL PEŞİN HARÇ</div>
+                    <div><b>${formatTrCurrency(tahsilHarci)}</b> TL TAHSİL HARCI${tahsilHarciOraniStr}</div>
+                    <div class="font-bold"><b>${formatTrCurrency(toplamHarc)}</b> TL TOPLAM HARÇ</div>
+                    <div><b>${formatTrCurrency(tebligatGideri)}</b> TL ÖDEME EMRİ TEBLİGAT GİDERİ</div>
+                    <div><b>${formatTrCurrency(masrafAvansi)}</b> TL MASRAF AVANSI</div>
+                    <div class="border-b border-slate-300 pb-1 font-bold"><b>${formatTrCurrency(toplamMasraf)}</b> TL TOPLAM MASRAF</div>
+
+                    <div class="border-b border-slate-400 py-1 my-2 font-bold text-slate-900 bg-amber-50/50 p-1 rounded">
+                        <b>${formatTrCurrency(guncelBakiye)}</b> TL ${taahhutTarihiFormatli} TARİHLİ GÜNCEL BAKİYE
+                    </div>
+
+                    <div class="text-slate-800 font-semibold bg-amber-100/50 p-1 rounded border border-amber-200">
+                        <b>${formatTrCurrency(toplamTaahhutSonrasiFaizVergili)}</b> TL ${baslangicTarihiStr} – ${bitisTarihiStr} TARİHLERİ ARASI İŞLEYECEK FAİZ+VERGİ
+                    </div>
+
+                    <div class="border-b border-slate-400 py-1 my-2 font-bold text-amber-700 text-sm">
+                        <b>${formatTrCurrency(toplamOdenecekMeblag)}</b> TL TOPLAM ÖDENECEK MEBLAĞ
+                    </div>
+                </div>
+
+                <div class="mt-4 text-slate-800 space-y-2 border-t pt-3">
+                    <p>Dosya borçlusu söz aldı, yukarıda yer alan dosya hesabını kalem kalem inceledim anladım, bir itirazım yoktur, ben bu dosya borcumun;</p>
+            `;
+
+            taksitListesiData.forEach((t, index) => {
+                let gostergeTutar = t.isEmp ? toplamOdenecekMeblag : t.tutar;
+                let formatedTutar = formatTrCurrency(gostergeTutar);
+                let kalanOnEk = (index === taksitListesiData.length - 1) ? "Kalan borcu olan " : "";
+                html += `<p><b>${index + 1}.</b> ${kalanOnEk}<b>${formatedTutar} TL</b>’Yİ <b>${t.tarihStr}</b> TARİHİNDE ödemeyi kabul ve taahhüt ediyorum dedi.</p>`;
+            });
+
+            html += `
+                <p class="pt-3 border-t mt-3">Borçluya taahhüdü ihlalin hukuki ve cezai sonuçları anlatıldı, borçlu söz aldı taahhüdü ihlalin hukuki ve cezai sonuçlarını anladım; taahhüdümü aynen tekrar ederim dedi. Alacaklı vekili söz aldı borçlunun taahhüdünü aynen kabul ediyorum dedi. Beyanları okundu, imzaları alındı. ${taahhutTarihiFormatli}</p>
+                <div class="flex justify-between text-[11px] font-bold pt-4">
+                    <span>ALACAKLI VEKİLİ</span><span>BORÇLU</span><span>İCRA MÜDÜR YRD.</span>
+                </div>
+            </div>`;
+            document.getElementById('onizlemeKutusu').innerHTML = html;
+
+            window.hesaplananVeriler = {
+                asilAlacak, yillikFaizOrani, akdiFaiz, islemişFaiz, ihtarnameMasrafi, bsmv, toplamAlacak,
+                hesapNo, akdiFaizOrani, akdiFaizBaslangicStr, hesapKesimTarihiStr, takipTarihiStr,
+                takipTaahhutArasiFaiz, vekaletUcreti, basvuruHarcı, pesinHarc, tahsilHarci, tahsilHarciOrani, toplamHarc,
+                tebligatGideri, masrafAvansi, toplamMasraf,
+                guncelBakiye, toplamTaahhutSonrasiFaizVergili, toplamOdenecekMeblag, taksitListesiData, acilisCumlesi,
+                borcluAdi, dosyaNo, icraDairesi, taahhutTarihiVal, taahhutTarihiFormatli, baslangicTarihiStr, bitisTarihiStr
+            };
+        }
+
+        function kalaniDoldurVeHesapla() {
+            hesaplaVeGuncelle();
+            const d = window.hesaplananVeriler;
+
+            let kademeSatirlari = document.querySelectorAll('.kademe-satir');
+            let bosInput = null;
+
+            kademeSatirlari.forEach(satir => {
+                const inputEl = satir.querySelector('.taksit-tutar');
+                const val = inputEl.value.trim();
+                if (val === "") {
+                    bosInput = inputEl;
+                }
+            });
+
+            let asilAlacak = d.asilAlacak;
+            let yillikFaizOrani = d.yillikFaizOrani;
+            let taahhutDate = d.taahhutTarihiVal ? new Date(d.taahhutTarihiVal) : new Date();
+            let gunlukFaizOrani = (yillikFaizOrani / 100) / 365;
+
+            let oncekiTarih = taahhutDate;
+            let toplamFaizHam = 0;
+            let araTaksitlerToplami = 0;
+            let aktifAnapara = asilAlacak;
+
+            d.taksitListesiData.forEach((t) => {
+                if (t.tarihObj) {
+                    let gunSayisi = getDaysBetween(oncekiTarih, t.tarihObj);
+                    toplamFaizHam += aktifAnapara * gunlukFaizOrani * gunSayisi;
+
+                    if (!t.isEmp) {
+                        araTaksitlerToplami += t.tutar;
+                        aktifAnapara = Math.max(0, aktifAnapara - t.tutar);
+                    }
+                    oncekiTarih = t.tarihObj;
+                }
+            });
+
+            let toplamFaizVergili = toplamFaizHam * 1.05;
+            let tamToplamMeblag = d.guncelBakiye + toplamFaizVergili;
+            let kalanTutar = tamToplamMeblag - araTaksitlerToplami;
+            if (kalanTutar < 0) kalanTutar = 0;
+
+            if (bosInput) {
+                bosInput.value = formatTrCurrency(kalanTutar);
+            } else {
+                alert("Boş bırakılmış bir son taksit alanı bulunamadı!");
+            }
+
+            hesaplaVeGuncelle();
+        }
+
+        async function wordIndir() {
+            if (!window.hesaplananVeriler) {
+                hesaplaVeGuncelle();
+            }
+            const d = window.hesaplananVeriler;
+            const { Document, Packer, Paragraph, TextRun, AlignmentType, TabStopType } = window.docx;
+
+            const hesapNoOnEk = d.hesapNo ? `${d.hesapNo} - ` : "";
+            const akdiFaizAralik = (d.akdiFaizBaslangicStr || d.hesapKesimTarihiStr) ? ` (${d.akdiFaizBaslangicStr}-${d.hesapKesimTarihiStr})` : "";
+            const islemisFaizAralik = (d.hesapKesimTarihiStr || d.takipTarihiStr) ? ` (${d.hesapKesimTarihiStr}-${d.takipTarihiStr})` : "";
+            const araDonemAralik = d.takipTarihiStr ? ` (${d.takipTarihiStr}-${d.taahhutTarihiFormatli} TARİHLERİ ARASI)` : "";
+            const tahsilHarciOraniStr = d.tahsilHarciOrani ? ` ( %${d.tahsilHarciOrani} )` : "";
+
+            let docChildren = [
+                new Paragraph({ children: [new TextRun({ text: "T.C.", bold: true, size: 22 })], alignment: AlignmentType.CENTER }),
+                new Paragraph({ children: [new TextRun({ text: d.icraDairesi, bold: true, size: 22 })], alignment: AlignmentType.CENTER }),
+                new Paragraph({ children: [new TextRun({ text: `DOSYA NO: ${d.dosyaNo}`, bold: true, size: 22 })], alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
+            ];
+
+            if (d.acilisCumlesi) {
+                docChildren.push(new Paragraph({ text: d.acilisCumlesi, size: 20, spacing: { after: 200 } }));
+            }
+
+            docChildren.push(
+                new Paragraph({ text: `${formatTrCurrency(d.asilAlacak)} TL ${hesapNoOnEk}Asıl Alacak (Temerrüt Faiz Oranı %${d.yillikFaizOrani}'dır.)`, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.akdiFaiz)} TL ${hesapNoOnEk}Akdi Faiz${d.akdiFaizOrani ? ' %' + d.akdiFaizOrani : ''}${akdiFaizAralik}`, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.islemişFaiz)} TL ${hesapNoOnEk}İşlemiş Faiz${d.yillikFaizOrani ? ' %' + d.yillikFaizOrani : ''}${islemisFaizAralik}`, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.bsmv)} TL ${hesapNoOnEk}BSMV %5 Toplamı`, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.ihtarnameMasrafi)} TL İhtarname Masrafları`, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.toplamAlacak)} TL Toplam Alacak`, bold: true, size: 20, spacing: { after: 150 } }),
+
+                new Paragraph({ text: `${formatTrCurrency(d.vekaletUcreti)} TL VEKALET ÜCRETİ`, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.takipTaahhutArasiFaiz)} TL İŞLEMİŞ FAİZ VE BSMV${araDonemAralik}`, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.basvuruHarcı)} TL BAŞVURMA HARCI`, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.pesinHarc)} TL PEŞİN HARÇ`, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.tahsilHarci)} TL TAHSİL HARCI${tahsilHarciOraniStr}`, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.toplamHarc)} TL TOPLAM HARÇ`, bold: true, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.tebligatGideri)} TL ÖDEME EMRİ TEBLİGAT GİDERİ`, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.masrafAvansi)} TL MASRAF AVANSI`, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.toplamMasraf)} TL TOPLAM MASRAF`, bold: true, size: 20, spacing: { after: 150 } }),
+
+                new Paragraph({ text: `${formatTrCurrency(d.guncelBakiye)} TL ${d.taahhutTarihiFormatli} TARİHLİ GÜNCEL BAKİYE`, bold: true, size: 20 }),
+                new Paragraph({ text: `${formatTrCurrency(d.toplamTaahhutSonrasiFaizVergili)} TL ${d.baslangicTarihiStr} - ${d.bitisTarihiStr} TARİHLERİ ARASI İŞLEYECEK FAİZ+VERGİ`, bold: true, size: 20 }),
+                new Paragraph({ children: [new TextRun({ text: `${formatTrCurrency(d.toplamOdenecekMeblag)} TL TOPLAM ÖDENECEK MEBLAĞ`, bold: true, size: 22, color: "B45309" })], spacing: { after: 300 } }),
+
+                new Paragraph({
+                    children: [
+                        new TextRun({ text: `Dosya borçlusu söz aldı, yukarıda yer alan dosya hesabını kalem kalem inceledim anladım, bir itirazım yoktur, ben bu dosya borcumun;`, size: 20 })
+                    ],
+                    spacing: { after: 200 }
+                })
+            );
+
+            d.taksitListesiData.forEach((t, index) => {
+                let fmtTutar = formatTrCurrency(t.isEmp ? d.toplamOdenecekMeblag : t.tutar);
+                let kalanOnEk = (index === d.taksitListesiData.length - 1) ? "Kalan borcu olan " : "";
+                let metin = `${index + 1}. ${kalanOnEk}${fmtTutar} TL’Yİ ${t.tarihStr} TARİHİNDE ödemeyi kabul ve taahhüt ediyorum dedi.`;
+                docChildren.push(new Paragraph({
+                    children: [new TextRun({ text: metin, size: 20 })],
+                    spacing: { after: 100 }
+                }));
+            });
+
+            docChildren.push(
+                new Paragraph({
+                    text: `Borçluya taahhüdü ihlalin hukuki ve cezai sonuçları anlatıldı, borçlu söz aldı taahhüdü ihlalin hukuki ve cezai sonuçlarını anladım; taahhüdümü aynen tekrar ederim dedi. Alacaklı vekili söz aldı borçlunun taahhüdünü aynen kabul ediyorum dedi. Beyanları okundu, imzaları alındı. ${d.taahhutTarihiFormatli}`,
+                    size: 20,
+                    spacing: { before: 200, after: 400 }
+                }),
+                new Paragraph({
+                    tabStops: [
+                        { type: TabStopType.CENTER, position: 4500 },
+                        { type: TabStopType.RIGHT, position: 9000 }
+                    ],
+                    children: [new TextRun({ text: `ALACAKLI VEKİLİ\tBORÇLU\tİCRA MÜDÜR YRD.`, bold: true, size: 20 })]
+                })
+            );
+
+            const doc = new Document({ sections: [{ properties: {}, children: docChildren }] });
+            const blob = await Packer.toBlob(doc);
+            saveAs(blob, `Icra_Taahhut_${d.borcluAdi.replace(/\s+/g, '_')}.docx`);
+        }
+    </script>
+</body>
+</html>
