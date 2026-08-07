@@ -305,6 +305,38 @@
             alert("API anahtarı bu tarayıcıda kaydedildi.");
         }
 
+        async function geminiIcerikUret(apiKey, modelAdi, requestBody) {
+            return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelAdi}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+        }
+
+        // API anahtarıyla o an gerçekten kullanılabilir olan bir Gemini modelini bulur.
+        // Google modelleri zaman zaman kullanımdan kaldırdığı için model adı koda sabit yazılmaz.
+        async function gecerliGeminiModelBul(apiKey) {
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
+            if (!resp.ok) {
+                const errText = await resp.text();
+                throw new Error(`Model listesi alınamadı (${resp.status}): ${errText.slice(0, 200)}`);
+            }
+            const data = await resp.json();
+            const modeller = (data.models || []).filter(m =>
+                Array.isArray(m.supportedGenerationMethods) &&
+                m.supportedGenerationMethods.includes('generateContent') &&
+                /gemini/i.test(m.name) &&
+                !/embedding|aqa/i.test(m.name)
+            );
+            if (modeller.length === 0) {
+                throw new Error('Bu API anahtarıyla kullanılabilir bir Gemini modeli bulunamadı.');
+            }
+            const secilen = modeller.find(m => /flash/i.test(m.name) && !/lite|8b/i.test(m.name))
+                || modeller.find(m => /flash/i.test(m.name))
+                || modeller[0];
+            return secilen.name.replace(/^models\//, '');
+        }
+
         // Gemini Vision API ile UYAP takip talebi ekran görüntüsünden veri çıkarımı
         async function gorseltenVeriOku(file) {
             if (!file) return;
@@ -361,11 +393,19 @@ Sadece görüntüde açıkça yazılı olan değerleri kullan, tahmin yürütme 
                     }
                 };
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody)
-                });
+                let modelAdi = localStorage.getItem('geminiModelAdi');
+                let response = null;
+                if (modelAdi) {
+                    response = await geminiIcerikUret(apiKey, modelAdi, requestBody);
+                    if (response.status === 404) {
+                        modelAdi = null;
+                    }
+                }
+                if (!modelAdi) {
+                    modelAdi = await gecerliGeminiModelBul(apiKey);
+                    localStorage.setItem('geminiModelAdi', modelAdi);
+                    response = await geminiIcerikUret(apiKey, modelAdi, requestBody);
+                }
 
                 if (!response.ok) {
                     const errText = await response.text();
