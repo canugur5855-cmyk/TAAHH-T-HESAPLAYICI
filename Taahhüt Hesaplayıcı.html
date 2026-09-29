@@ -186,9 +186,26 @@
                     <span>📈</span> Taksit Planı ve Detaylı Faiz Hesaplama
                 </h2>
 
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-600 mb-1">Faiz Gün Esası</label>
+                        <select id="gunBazi" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="hesaplaVeGuncelle()">
+                            <option value="365" selected>365 gün (Yargıtay / UYAP esası)</option>
+                            <option value="360">360 gün (yalnızca sözleşmede açık hüküm varsa)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-600 mb-1">Taksitlerin Mahsup Sırası</label>
+                        <select id="mahsupYontemi" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="hesaplaVeGuncelle()">
+                            <option value="tbk100" selected>TBK m.100: önce faiz ve masraflar, sonra asıl alacak</option>
+                            <option value="anapara">Doğrudan asıl alacaktan düş (eski yöntem)</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="border-t pt-4">
                     <div class="flex justify-between items-center mb-2">
-                        <label class="block text-xs font-bold text-slate-700">Taksitler (Ara taksitleri girip son taksiti boş bırakın)</label>
+                        <label class="block text-xs font-bold text-slate-700">Taksitler (Ara taksitleri girin, son taksit otomatik hesaplanır)</label>
                     </div>
                     
                     <div id="taksitKademeleriListesi" class="space-y-2 mb-3 max-h-56 overflow-y-auto pr-1">
@@ -201,7 +218,7 @@
                 </div>
 
                 <button type="button" onclick="kalaniDoldurVeHesapla()" class="w-full mt-6 bg-amber-600 hover:bg-amber-700 text-white font-medium py-2.5 px-4 rounded-lg transition duration-150 text-sm shadow-sm flex items-center justify-center gap-2">
-                    <span>✨</span> Kalanı Doldur ve Hesapla (Tüm Dönem Faizi Dahil)
+                    <span>✨</span> Yeniden Hesapla ve Dökümü Göster (Son taksit otomatik)
                 </button>
             </div>
 
@@ -220,6 +237,13 @@
                 </div>
 
                 <div id="onizlemeKutusu" class="border border-slate-200 bg-slate-50 p-6 rounded-lg text-xs leading-relaxed space-y-3 font-mono text-slate-700 max-h-[600px] overflow-y-auto">
+                    <!-- Dinamik içerik -->
+                </div>
+
+                <h3 class="text-sm font-semibold text-slate-900 mt-5 mb-2 flex items-center gap-2">
+                    <span>🧮</span> Faiz ve Ödeme Planı Dökümü (kontrol amaçlı, belgeye yazılmaz)
+                </h3>
+                <div id="planDokumu" class="border border-slate-200 rounded-lg overflow-x-auto text-[11px]">
                     <!-- Dinamik içerik -->
                 </div>
             </div>
@@ -360,7 +384,7 @@
                         <input type="text" placeholder="Tarih (GG.AA.YYYY)" value="" class="taksit-tarih w-full px-2 py-1.5 border border-slate-300 rounded text-xs" oninput="hesaplaVeGuncelle()">
                     </div>
                     <div class="col-span-7 relative">
-                        <input type="text" placeholder="Boş bırakın" value="" class="taksit-tutar w-full px-2 py-1.5 border border-slate-300 rounded text-xs bg-amber-50/50" oninput="hesaplaVeGuncelle()">
+                        <input type="text" placeholder="Otomatik hesaplanır" value="" readonly tabindex="-1" class="taksit-tutar w-full px-2 py-1.5 border border-slate-300 rounded text-xs bg-amber-50/50 font-semibold text-amber-900 cursor-not-allowed">
                         <span class="absolute right-2 top-1.5 text-[10px] text-amber-600 font-semibold pointer-events-none">Son Taksit</span>
                     </div>
                     <div class="col-span-1 text-center">
@@ -374,23 +398,25 @@
             const liste = document.getElementById('taksitKademeleriListesi');
             const sonTaksitSatiri = liste.querySelector('.is-son-taksit');
 
+            // Yeni taksit, bir önceki ara taksitin tutarıyla ve bir ay sonrasına önerilir.
+            // Ödeme günü ilk ara taksitin gününe sabitlenir; o gün ilgili ayda yoksa (ör. 31 Şubat) ayın son günü alınır,
+            // böylece 31.01 → 28.02 → 31.03 şeklinde ay atlanmadan ve gün kaymadan ilerler.
             const araSatirlar = Array.from(liste.querySelectorAll('.kademe-satir:not(.is-son-taksit)'));
+            const araTarihler = araSatirlar.map(s => parseDateString(s.querySelector('.taksit-tarih').value.trim()));
             let baseDate = null;
+            let onerilenTutar = "";
             if (araSatirlar.length > 0) {
                 const sonAraSatir = araSatirlar[araSatirlar.length - 1];
-                baseDate = parseDateString(sonAraSatir.querySelector('.taksit-tarih').value.trim());
+                baseDate = araTarihler[araTarihler.length - 1];
+                onerilenTutar = sonAraSatir.querySelector('.taksit-tutar').value.trim();
             }
+            const odemeGunu = (araTarihler.find(t => t) || baseDate)?.getDate();
             if (!baseDate) {
-                const taahhutVal = document.getElementById('taahhutTarihi').value;
-                if (taahhutVal) {
-                    const t = new Date(taahhutVal);
-                    if (!isNaN(t.getTime())) baseDate = t;
-                }
+                baseDate = parseDateString(document.getElementById('taahhutTarihi').value);
             }
             let onerilenTarihStr = "";
             if (baseDate) {
-                const yeniTarih = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, baseDate.getDate());
-                onerilenTarihStr = formatDateTr2(yeniTarih);
+                onerilenTarihStr = formatDateTr2(birAySonra(baseDate, odemeGunu || baseDate.getDate()));
             }
 
             const div = document.createElement('div');
@@ -400,7 +426,7 @@
                     <input type="text" placeholder="Tarih (GG.AA.YYYY)" value="${onerilenTarihStr}" class="taksit-tarih w-full px-2 py-1.5 border border-slate-300 rounded text-xs" oninput="hesaplaVeGuncelle()">
                 </div>
                 <div class="col-span-7 relative">
-                    <input type="text" placeholder="Tutar (TL)" value="" class="taksit-tutar w-full px-2 py-1.5 border border-slate-300 rounded text-xs" oninput="hesaplaVeGuncelle()">
+                    <input type="text" placeholder="Tutar (TL)" value="${onerilenTutar}" class="taksit-tutar w-full px-2 py-1.5 border border-slate-300 rounded text-xs" oninput="hesaplaVeGuncelle()">
                 </div>
                 <div class="col-span-1 text-center">
                     <button type="button" onclick="kademeSil(this)" class="text-red-500 font-bold hover:text-red-700">✕</button>
@@ -413,6 +439,12 @@
                 liste.appendChild(div);
             }
             hesaplaVeGuncelle();
+        }
+
+        // Verilen tarihin bir sonraki ayında, istenen güne denk gelen tarihi döndürür; gün o ayda yoksa ayın son günü.
+        function birAySonra(tarih, gun) {
+            const hedefAyinSonGunu = new Date(tarih.getFullYear(), tarih.getMonth() + 2, 0).getDate();
+            return new Date(tarih.getFullYear(), tarih.getMonth() + 1, Math.min(gun, hedefAyinSonGunu));
         }
 
         function kademeSil(btn) {
@@ -464,9 +496,74 @@
         }
 
         function formatDateInputTr(isoVal) {
-            if (!isoVal) return "";
-            const d = new Date(isoVal);
-            return isNaN(d.getTime()) ? "" : d.toLocaleDateString('tr-TR');
+            const d = parseDateString(isoVal);
+            return d ? formatDateTr2(d) : "";
+        }
+
+        const BSMV_ORANI = 0.05;
+
+        function yuvarla2(num) {
+            return Math.round((num + Number.EPSILON) * 100) / 100;
+        }
+
+        // Taahhüt tarihinden son taksit tarihine kadar işleyecek faizi dönem dönem hesaplar.
+        // - Faiz yalnızca asıl alacak üzerinden basit faiz olarak işler (faize faiz yürütülmez), üzerine %5 BSMV eklenir.
+        // - Formül: anapara × oran × gün / (100 × gün esası). Yargıtay içtihadına göre gün esası 365'tir;
+        //   360 ancak kredi sözleşmesinde açıkça kararlaştırılmışsa kullanılmalıdır.
+        // - "tbk100" yönteminde her ara taksit önce birikmiş faiz+BSMV'ye, sonra diğer fer'i kalemlere
+        //   (vekalet ücreti, harç, masraf, takip öncesi/sonrası işlemiş faiz vb.), en son asıl alacağa mahsup edilir.
+        //   "anapara" yönteminde taksit doğrudan asıl alacaktan düşülür (TBK m.100'e aykırı, borçlu lehine).
+        // - Son taksit, o tarihe kadar kalan tüm borcu (asıl alacak + fer'iler + birikmiş faiz) kapatır.
+        function faizPlaniHesapla({ asilAlacak, feriBakiye, yillikFaizOrani, gunBazi, mahsupYontemi, baslangicTarihi, araTaksitler, sonTaksitTarihi }) {
+            let anapara = asilAlacak;
+            let feri = feriBakiye;
+            let birikmisFaiz = 0;
+            let toplamFaizHam = 0;
+            let araTaksitToplami = 0;
+            let oncekiTarih = baslangicTarihi;
+            const donemler = [];
+
+            const faizIslet = (tarih) => {
+                const gun = getDaysBetween(oncekiTarih, tarih);
+                const faiz = anapara * (yillikFaizOrani / 100) * gun / gunBazi;
+                toplamFaizHam += faiz;
+                birikmisFaiz += faiz * (1 + BSMV_ORANI);
+                const donem = { baslangic: oncekiTarih, bitis: tarih, gun, faizeEsasAnapara: anapara, faiz, bsmv: faiz * BSMV_ORANI };
+                oncekiTarih = tarih;
+                return donem;
+            };
+
+            const mahsupEt = (odeme) => {
+                let kalan = odeme;
+                const dus = (bakiye) => { const d = Math.min(kalan, bakiye); kalan -= d; return d; };
+                if (mahsupYontemi === 'anapara') {
+                    anapara -= dus(anapara);
+                    birikmisFaiz -= dus(birikmisFaiz);
+                    feri -= dus(feri);
+                } else {
+                    birikmisFaiz -= dus(birikmisFaiz);
+                    feri -= dus(feri);
+                    anapara -= dus(anapara);
+                }
+                return kalan;
+            };
+
+            araTaksitler.forEach(t => {
+                const donem = faizIslet(t.tarihObj);
+                const fazlaOdeme = mahsupEt(t.tutar);
+                araTaksitToplami += t.tutar;
+                donemler.push({ ...donem, odeme: t.tutar, fazlaOdeme, kalanAnapara: anapara, kalanFeri: feri, kalanFaiz: birikmisFaiz });
+            });
+
+            let sonTaksitTutari = 0;
+            if (sonTaksitTarihi) {
+                const donem = faizIslet(sonTaksitTarihi);
+                sonTaksitTutari = anapara + feri + birikmisFaiz;
+                donemler.push({ ...donem, odeme: sonTaksitTutari, fazlaOdeme: 0, kalanAnapara: 0, kalanFeri: 0, kalanFaiz: 0, sonTaksit: true });
+            }
+
+            const toplamFaizVergili = yuvarla2(toplamFaizHam * (1 + BSMV_ORANI));
+            return { donemler, toplamFaizHam, toplamFaizVergili, araTaksitToplami, sonTaksitTutari: yuvarla2(sonTaksitTutari) };
         }
 
         function turkceSiraSayi(n) {
@@ -519,8 +616,10 @@
             const toplamHarc = basvuruHarcı + pesinHarc + tahsilHarci;
             const toplamMasraf = tebligatGideri + masrafAvansi;
 
-            let taahhutDate = taahhutTarihiVal ? new Date(taahhutTarihiVal) : new Date();
-            let gunlukFaizOrani = (yillikFaizOrani / 100) / 365;
+            const gunBazi = parseInt(document.getElementById('gunBazi').value, 10) || 365;
+            const mahsupYontemi = document.getElementById('mahsupYontemi').value;
+
+            let taahhutDate = parseDateString(taahhutTarihiVal) || new Date(new Date().setHours(0, 0, 0, 0));
 
             let kademeSatirlari = document.querySelectorAll('.kademe-satir');
             let taksitListesiData = [];
@@ -528,19 +627,17 @@
             kademeSatirlari.forEach(satir => {
                 const tarihVal = satir.querySelector('.taksit-tarih').value.trim();
                 const tutarVal = satir.querySelector('.taksit-tutar').value.trim();
-                let valNum = parseTrNumber(tutarVal);
+                const isSon = satir.classList.contains('is-son-taksit');
                 taksitListesiData.push({
                     tarihStr: tarihVal,
                     tarihObj: parseDateString(tarihVal),
-                    tutar: valNum,
-                    isEmp: (tutarVal === "")
+                    tutar: isSon ? 0 : parseTrNumber(tutarVal),
+                    isSon
                 });
             });
 
-            let aktifAnapara = asilAlacak;
-            let toplamFaizHam = 0;
             let oncekiTarih = taahhutDate;
-            let baslangicTarihiStr = taahhutDate.toLocaleDateString('tr-TR');
+            let baslangicTarihiStr = formatDateTr2(taahhutDate);
             let sonTaksitTarihiStr = "";
             let uyarilar = [];
 
@@ -553,23 +650,54 @@
                     if (taksit.tarihObj.getTime() < oncekiTarih.getTime()) {
                         uyarilar.push(`${idx + 1}. taksit tarihi ("${taksit.tarihStr}") kendinden önceki tarihten daha eskiye düşüyor, taksitler kronolojik sırada değil.`);
                     }
+                    if (!taksit.isSon && taksit.tutar <= 0) {
+                        uyarilar.push(`${idx + 1}. taksitin tutarı girilmemiş, 0 TL kabul edildi.`);
+                    }
                     sonTaksitTarihiStr = taksit.tarihStr;
-                    let gunSayisi = getDaysBetween(oncekiTarih, taksit.tarihObj);
-                    let donemFaizi = aktifAnapara * gunlukFaizOrani * gunSayisi;
-                    toplamFaizHam += donemFaizi;
-
-                    let dusulecekTutar = taksit.isEmp ? 0 : taksit.tutar;
-                    aktifAnapara = Math.max(0, aktifAnapara - dusulecekTutar);
                     oncekiTarih = taksit.tarihObj;
                 }
             });
 
-            let toplamTaahhutSonrasiFaizVergili = toplamFaizHam * 1.05;
+            const araTaksitler = taksitListesiData.filter(t => !t.isSon && t.tarihObj);
+            const sonTaksit = taksitListesiData.find(t => t.isSon && t.tarihObj);
+            if (!sonTaksit) {
+                uyarilar.push(`Son taksit tarihi girilmedi; faiz son ara taksite kadar hesaplandı ve kalan borç bir taksite bağlanmadı.`);
+            }
+            if (gunBazi === 360) {
+                uyarilar.push(`Faiz 360 gün esasıyla hesaplanıyor. Yargıtay, yılı 365 gün kabul etmektedir; 360 gün yalnızca kredi sözleşmesinde açıkça kararlaştırılmışsa savunulabilir, aksi halde fazla faiz talebi borçlu itirazıyla düzeltilir.`);
+            }
+            if (mahsupYontemi === 'anapara') {
+                uyarilar.push(`Taksitler doğrudan asıl alacaktan düşülüyor. Yargıtay 12. HD'ye göre takipten sonraki kısmi ödemeler TBK m.100 uyarınca önce faiz, vekalet ücreti ve masraflara mahsup edilmelidir; bu yöntem faizi olması gerekenden az (alacaklı aleyhine) hesaplar.`);
+            }
 
             const guncelBakiye = toplamAlacak + takipTaahhutArasiFaiz + vekaletUcreti + toplamHarc + toplamMasraf;
-            const toplamOdenecekMeblag = guncelBakiye + toplamTaahhutSonrasiFaizVergili;
 
-            let taahhutTarihiFormatli = taahhutDate.toLocaleDateString('tr-TR');
+            const plan = faizPlaniHesapla({
+                asilAlacak,
+                feriBakiye: guncelBakiye - asilAlacak,
+                yillikFaizOrani,
+                gunBazi,
+                mahsupYontemi,
+                baslangicTarihi: taahhutDate,
+                araTaksitler,
+                sonTaksitTarihi: sonTaksit ? sonTaksit.tarihObj : null
+            });
+
+            let toplamTaahhutSonrasiFaizVergili = plan.toplamFaizVergili;
+            const toplamOdenecekMeblag = yuvarla2(guncelBakiye + toplamTaahhutSonrasiFaizVergili);
+
+            // Son taksit, toplam ödenecek meblağdan ara taksitler düşülerek bulunur; böylece belgedeki rakamlar kuruşu kuruşuna tutar.
+            let sonTaksitTutari = yuvarla2(toplamOdenecekMeblag - plan.araTaksitToplami);
+            if (sonTaksit && sonTaksitTutari <= 0) {
+                uyarilar.push(`Ara taksitlerin toplamı (${formatTrCurrency(plan.araTaksitToplami)} TL) toplam ödenecek meblağı karşılıyor ya da aşıyor; son taksite borç kalmıyor. Taksit tutarlarını kontrol edin.`);
+                sonTaksitTutari = 0;
+            }
+            if (sonTaksit) sonTaksit.tutar = sonTaksitTutari;
+
+            const sonTaksitInput = document.querySelector('.is-son-taksit .taksit-tutar');
+            if (sonTaksitInput) sonTaksitInput.value = sonTaksit ? formatTrCurrency(sonTaksitTutari) : "";
+
+            let taahhutTarihiFormatli = formatDateTr2(taahhutDate);
             let bitisTarihiStr = sonTaksitTarihiStr || taahhutTarihiFormatli;
 
             const hesapNoOnEk = hesapNo ? `${hesapNo} - ` : "";
@@ -633,7 +761,7 @@
             `;
 
             taksitListesiData.forEach((t, index) => {
-                let gostergeTutar = t.isEmp ? toplamOdenecekMeblag : t.tutar;
+                let gostergeTutar = t.tutar;
                 let formatedTutar = formatTrCurrency(gostergeTutar);
                 let kalanOnEk = (index === taksitListesiData.length - 1) ? "Kalan borcu olan " : "";
                 html += `<p><b>${index + 1}.</b> ${kalanOnEk}<b>${formatedTutar} TL</b>’Yİ <b>${t.tarihStr}</b> TARİHİNDE ödemeyi kabul ve taahhüt ediyorum dedi.</p>`;
@@ -646,6 +774,7 @@
                 </div>
             </div>`;
             document.getElementById('onizlemeKutusu').innerHTML = html;
+            planDokumuCiz(plan, gunBazi, mahsupYontemi, yillikFaizOrani);
 
             window.hesaplananVeriler = {
                 asilAlacak, yillikFaizOrani, akdiFaiz, islemişFaiz, ihtarnameMasrafi, bsmv, toplamAlacak,
@@ -657,56 +786,46 @@
             };
         }
 
+        // Son taksit artık her değişiklikte otomatik hesaplanıyor; buton yalnızca yeniden hesaplatır ve dökümü gösterir.
         function kalaniDoldurVeHesapla() {
             hesaplaVeGuncelle();
-            const d = window.hesaplananVeriler;
+            document.getElementById('planDokumu').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
 
-            let kademeSatirlari = document.querySelectorAll('.kademe-satir');
-            let bosInput = null;
-
-            kademeSatirlari.forEach(satir => {
-                const inputEl = satir.querySelector('.taksit-tutar');
-                const val = inputEl.value.trim();
-                if (val === "") {
-                    bosInput = inputEl;
-                }
-            });
-
-            let asilAlacak = d.asilAlacak;
-            let yillikFaizOrani = d.yillikFaizOrani;
-            let taahhutDate = d.taahhutTarihiVal ? new Date(d.taahhutTarihiVal) : new Date();
-            let gunlukFaizOrani = (yillikFaizOrani / 100) / 365;
-
-            let oncekiTarih = taahhutDate;
-            let toplamFaizHam = 0;
-            let araTaksitlerToplami = 0;
-            let aktifAnapara = asilAlacak;
-
-            d.taksitListesiData.forEach((t) => {
-                if (t.tarihObj) {
-                    let gunSayisi = getDaysBetween(oncekiTarih, t.tarihObj);
-                    toplamFaizHam += aktifAnapara * gunlukFaizOrani * gunSayisi;
-
-                    if (!t.isEmp) {
-                        araTaksitlerToplami += t.tutar;
-                        aktifAnapara = Math.max(0, aktifAnapara - t.tutar);
-                    }
-                    oncekiTarih = t.tarihObj;
-                }
-            });
-
-            let toplamFaizVergili = toplamFaizHam * 1.05;
-            let tamToplamMeblag = d.guncelBakiye + toplamFaizVergili;
-            let kalanTutar = tamToplamMeblag - araTaksitlerToplami;
-            if (kalanTutar < 0) kalanTutar = 0;
-
-            if (bosInput) {
-                bosInput.value = formatTrCurrency(kalanTutar);
-            } else {
-                alert("Boş bırakılmış bir son taksit alanı bulunamadı!");
+        function planDokumuCiz(plan, gunBazi, mahsupYontemi, yillikFaizOrani) {
+            const kutu = document.getElementById('planDokumu');
+            if (plan.donemler.length === 0) {
+                kutu.innerHTML = `<div class="p-3 text-slate-500">Taahhüt tarihi ve taksit tarihleri girildiğinde dönem dönem faiz dökümü burada görünür.</div>`;
+                return;
             }
-
-            hesaplaVeGuncelle();
+            const yontemMetni = mahsupYontemi === 'anapara' ? 'taksit doğrudan asıl alacaktan' : 'TBK m.100: önce faiz, sonra masraflar, en son asıl alacak';
+            const satirlar = plan.donemler.map((p, i) => `
+                <tr class="${p.sonTaksit ? 'bg-amber-50 font-semibold' : ''} border-t border-slate-100">
+                    <td class="px-2 py-1">${i + 1}${p.sonTaksit ? ' (son)' : ''}</td>
+                    <td class="px-2 py-1 whitespace-nowrap">${formatDateTr2(p.baslangic)} – ${formatDateTr2(p.bitis)}</td>
+                    <td class="px-2 py-1 text-right">${p.gun}</td>
+                    <td class="px-2 py-1 text-right">${formatTrCurrency(p.faizeEsasAnapara)}</td>
+                    <td class="px-2 py-1 text-right">${formatTrCurrency(p.faiz)}</td>
+                    <td class="px-2 py-1 text-right">${formatTrCurrency(p.bsmv)}</td>
+                    <td class="px-2 py-1 text-right">${formatTrCurrency(p.odeme)}</td>
+                    <td class="px-2 py-1 text-right">${formatTrCurrency(p.kalanAnapara)}</td>
+                    <td class="px-2 py-1 text-right">${formatTrCurrency(p.kalanFeri + p.kalanFaiz)}</td>
+                </tr>`).join('');
+            kutu.innerHTML = `
+                <table class="w-full">
+                    <thead class="bg-slate-100 text-slate-600">
+                        <tr>
+                            <th class="px-2 py-1 text-left">#</th><th class="px-2 py-1 text-left">Dönem</th><th class="px-2 py-1 text-right">Gün</th>
+                            <th class="px-2 py-1 text-right">Faize Esas Anapara</th><th class="px-2 py-1 text-right">Faiz</th><th class="px-2 py-1 text-right">BSMV</th>
+                            <th class="px-2 py-1 text-right">Ödeme</th><th class="px-2 py-1 text-right">Kalan Anapara</th><th class="px-2 py-1 text-right">Kalan Faiz+Masraf</th>
+                        </tr>
+                    </thead>
+                    <tbody>${satirlar}</tbody>
+                </table>
+                <div class="p-2 bg-slate-50 text-slate-600 border-t border-slate-200">
+                    Formül: anapara × %${yillikFaizOrani} × gün / ${gunBazi} · BSMV %${BSMV_ORANI * 100} · Mahsup: ${yontemMetni}.
+                    Toplam faiz ${formatTrCurrency(plan.toplamFaizHam)} TL + BSMV = <b>${formatTrCurrency(plan.toplamFaizVergili)} TL</b>.
+                </div>`;
         }
 
         async function wordIndir() {
@@ -763,7 +882,7 @@
             );
 
             d.taksitListesiData.forEach((t, index) => {
-                let fmtTutar = formatTrCurrency(t.isEmp ? d.toplamOdenecekMeblag : t.tutar);
+                let fmtTutar = formatTrCurrency(t.tutar);
                 let kalanOnEk = (index === d.taksitListesiData.length - 1) ? "Kalan borcu olan " : "";
                 let metin = `${index + 1}. ${kalanOnEk}${fmtTutar} TL’Yİ ${t.tarihStr} TARİHİNDE ödemeyi kabul ve taahhüt ediyorum dedi.`;
                 docChildren.push(new Paragraph({
