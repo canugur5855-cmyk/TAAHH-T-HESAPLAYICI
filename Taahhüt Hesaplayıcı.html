@@ -189,7 +189,7 @@
                                 <input type="text" inputmode="decimal" id="pesinHarc" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
                             </div>
                             <div>
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Tahsil Harcı (TL) — takip öncesi toplam alacak × oran</label>
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Tahsil Harcı (TL) — takip öncesi toplam alacak × oran − peşin harç</label>
                                 <input type="text" id="tahsilHarci" value="" placeholder="Otomatik hesaplanır" readonly tabindex="-1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-amber-50/50 font-semibold text-amber-900 cursor-not-allowed">
                             </div>
                             <div>
@@ -1167,8 +1167,9 @@
                 .filter(a => a.tutar > 0);
             const toplamAnapara = anaparalar.reduce((s, a) => s + a.tutar, 0);
             const faizOranlari = [...new Set(alacakGruplari.filter(g => g.asilAlacak > 0).map(g => g.faizOrani))];
-            // Tahsil harcı, takip öncesi toplam alacak (takip çıkışı) üzerinden oranla hesaplanır.
-            const tahsilHarci = yuvarla2(toplamAlacak * tahsilHarciOrani / 100);
+            // Tahsil harcı, takip öncesi toplam alacak (takip çıkışı) üzerinden oranla hesaplanır;
+            // peşin harç tahsil harcına mahsup edildiğinden mükerrer olmaması için düşülür.
+            const tahsilHarci = Math.max(0, yuvarla2(toplamAlacak * tahsilHarciOrani / 100 - pesinHarc));
             document.getElementById('tahsilHarci').value = tahsilHarci ? formatTrCurrency(tahsilHarci) : "";
             const toplamHarc = basvuruHarcı + pesinHarc + tahsilHarci;
             const toplamMasraf = tebligatGideri + masrafAvansi;
