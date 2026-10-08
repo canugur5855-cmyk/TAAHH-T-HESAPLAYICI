@@ -8,31 +8,81 @@
     <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Taahhüt">
+    <meta name="robots" content="noindex">
+    <style>
+        /* iOS, 16px'ten küçük yazı tipli alanlara dokunulunca sayfayı yakınlaştırır; telefonda bunu önler. */
+        @media (max-width: 640px) {
+            input, select, textarea { font-size: 16px !important; }
+        }
+    </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
-    <header class="bg-slate-900 text-white shadow-md border-b border-slate-800">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
+    <!-- GİRİŞ EKRANI: taslaklar Supabase'de saklandığı için uygulama oturum açılmadan kullanılamaz -->
+    <div id="girisEkrani" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
+        <form onsubmit="girisYap(event)" class="bg-white w-full max-w-sm rounded-xl shadow-lg p-6 space-y-4">
+            <div class="flex items-center gap-3">
                 <div class="bg-amber-600 p-2 rounded-lg text-white font-bold text-xl">⚖️</div>
-                <div>
-                    <h1 class="text-xl font-bold tracking-tight">Hukuk Ofisi İcra & Taahhüt Otomasyonu</h1>
-                    <p class="text-xs text-slate-400">V3.1 - UYAP Veri Giriş Entegrasyonlu (V2.8 Tabanlı OCR)</p>
+                <h1 class="text-lg font-bold text-slate-900">İcra & Taahhüt Hesaplayıcı</h1>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">E-posta</label>
+                <input type="email" id="girisEposta" autocomplete="username" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Şifre</label>
+                <input type="password" id="girisSifre" autocomplete="current-password" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base focus:ring-2 focus:ring-amber-500 focus:outline-none">
+            </div>
+            <button type="submit" id="girisDugmesi" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2.5 rounded-lg transition">Giriş Yap</button>
+            <div id="girisHata" class="text-xs text-red-600"></div>
+        </form>
+    </div>
+
+    <header class="bg-slate-900 text-white shadow-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex justify-between items-center gap-3">
+            <div class="flex items-center space-x-3 min-w-0">
+                <div class="bg-amber-600 p-2 rounded-lg text-white font-bold text-xl">⚖️</div>
+                <div class="min-w-0">
+                    <h1 class="text-base sm:text-xl font-bold tracking-tight truncate">Hukuk Ofisi İcra & Taahhüt Otomasyonu</h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">V3.1 - UYAP Veri Giriş Entegrasyonlu (V2.8 Tabanlı OCR)</p>
                 </div>
             </div>
-            <div class="text-sm bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300">
-                Durum: <span class="text-emerald-400 font-semibold">Aktif (V3.1)</span>
+            <div class="flex items-center gap-2 text-xs sm:text-sm shrink-0">
+                <span id="oturumEposta" class="text-slate-300 hidden sm:inline"></span>
+                <button type="button" onclick="cikisYap()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-200">Çıkış</button>
             </div>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
+    <main class="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+
         <!-- SOL KOLON: Girdiler ve Hesaplama -->
         <div class="lg:col-span-6 space-y-6">
+
+            <!-- TASLAKLAR: haciz öncesi hazırlanan dosyalar; bilgisayarda kaydedilip telefonda açılır -->
+            <div class="bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-200">
+                <div class="flex justify-between items-center gap-2 mb-3">
+                    <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                        <span>🗂️</span> Taslaklar
+                    </h2>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="yeniTaslak()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-2 px-3 rounded-lg transition">+ Yeni</button>
+                        <button type="button" onclick="taslakKaydet()" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-3 rounded-lg transition">💾 Kaydet</button>
+                    </div>
+                </div>
+                <div id="acikTaslakBilgisi" class="text-xs text-slate-500 mb-2">Yeni (kaydedilmemiş) dosya</div>
+                <div id="taslakListesi" class="divide-y divide-slate-100 border border-slate-200 rounded-lg max-h-64 overflow-y-auto text-sm">
+                    <div class="p-3 text-slate-500 text-xs">Taslaklar yükleniyor...</div>
+                </div>
+            </div>
             
             <!-- EKRAN GÖRÜNTÜSÜ YÜKLEME PANELİ (V2.8 GÜNCELLEMESİ) -->
             <div class="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-xl shadow-xs border border-amber-200">
@@ -81,10 +131,6 @@
                         <input type="text" id="borcluAdi" value="" placeholder="AD SOYAD" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-slate-600 mb-1">Borçlu T.C. / VKN</label>
-                        <input type="text" id="borcluTc" value="" placeholder="12345678901" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
-                    </div>
-                    <div>
                         <label class="block text-xs font-medium text-slate-600 mb-1">Taahhüt Tarihi</label>
                         <input type="date" id="taahhutTarihi" value="" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="hesaplaVeGuncelle()">
                     </div>
@@ -115,7 +161,7 @@
 
                         <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
                             <label class="block text-[11px] font-medium text-slate-600 mb-1">İhtarname Masrafı (TL)</label>
-                            <input type="text" id="ihtarnameMasrafi" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                            <input type="text" inputmode="decimal" id="ihtarnameMasrafi" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
                         </div>
                     </div>
 
@@ -124,35 +170,35 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div class="col-span-2">
                                 <label class="block text-[11px] font-medium text-slate-600 mb-1">İşlemiş Faiz ve BSMV (Takip -> Taahhüt) (TL)</label>
-                                <input type="text" id="takipTaahhutArasiFaiz" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-amber-900" oninput="hesaplaVeGuncelle()">
+                                <input type="text" inputmode="decimal" id="takipTaahhutArasiFaiz" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-amber-900" oninput="hesaplaVeGuncelle()">
                             </div>
                             <div>
                                 <label class="block text-[11px] font-medium text-slate-600 mb-1">Vekalet Ücreti (TL)</label>
-                                <input type="text" id="vekaletUcreti" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                                <input type="text" inputmode="decimal" id="vekaletUcreti" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
                             </div>
                             <div>
                                 <label class="block text-[11px] font-medium text-slate-600 mb-1">Başvuru Harcı (TL)</label>
-                                <input type="text" id="basvuruHarcı" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                                <input type="text" inputmode="decimal" id="basvuruHarcı" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
                             </div>
                             <div>
                                 <label class="block text-[11px] font-medium text-slate-600 mb-1">Peşin Harç (TL)</label>
-                                <input type="text" id="pesinHarc" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                                <input type="text" inputmode="decimal" id="pesinHarc" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
                             </div>
                             <div>
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Tahsil Harcı (TL)</label>
-                                <input type="text" id="tahsilHarci" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Tahsil Harcı (TL) — takip öncesi toplam alacak × oran</label>
+                                <input type="text" id="tahsilHarci" value="" placeholder="Otomatik hesaplanır" readonly tabindex="-1" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-amber-50/50 font-semibold text-amber-900 cursor-not-allowed">
                             </div>
                             <div>
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Tahsil Harcı Oranı (%) — bilgi amaçlı</label>
-                                <input type="text" id="tahsilHarciOrani" value="" placeholder="0" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Tahsil Harcı Oranı (%)</label>
+                                <input type="text" inputmode="decimal" id="tahsilHarciOrani" value="9,10" placeholder="9,10" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
                             </div>
                             <div>
                                 <label class="block text-[11px] font-medium text-slate-600 mb-1">Ödeme Emri Tebligat Gideri (TL)</label>
-                                <input type="text" id="tebligatGideri" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                                <input type="text" inputmode="decimal" id="tebligatGideri" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
                             </div>
                             <div>
                                 <label class="block text-[11px] font-medium text-slate-600 mb-1">Masraf Avansı (TL)</label>
-                                <input type="text" id="masrafAvansi" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
+                                <input type="text" inputmode="decimal" id="masrafAvansi" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
                             </div>
                         </div>
                     </div>
@@ -206,7 +252,7 @@
 
         <!-- SAĞ KOLON: Canlı Önizleme ve Word Çıktı -->
         <div class="lg:col-span-6 space-y-6">
-            <div class="bg-white p-6 rounded-xl shadow-xs border border-slate-200 sticky top-6">
+            <div class="bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-200 lg:sticky lg:top-6">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
                         <span>📄</span> Taahhüt Belgesi Canlı Önizlemesi
@@ -285,7 +331,222 @@
             alacakGrubuEkle();
             kademeleriBaslat();
             hesaplaVeGuncelle();
+            degisiklikIsaretle(false);
+
+            if (!sb) {
+                document.getElementById('girisHata').textContent = 'Sunucuya bağlanılamadı. İnternet bağlantısını kontrol edip sayfayı yenileyin.';
+                return;
+            }
+            sb.auth.onAuthStateChange((olay, oturum) => {
+                // Supabase, bu geri çağrının içinden başka istek atılmasını önermiyor; iş bir sonraki tura bırakılır.
+                setTimeout(async () => {
+                    // Tarayıcıda saklı oturum, kullanıcı silinmiş ya da şifresi değişmiş olsa da süresi dolana
+                    // kadar geçerli görünür; sayfa açılışında sunucuya sorularak doğrulanır.
+                    if (olay === 'INITIAL_SESSION' && oturum) {
+                        const { error } = await sb.auth.getUser();
+                        if (error) return sb.auth.signOut({ scope: 'local' });
+                    }
+                    oturumDegisti(oturum);
+                }, 0);
+            });
         });
+
+        // ---- Oturum ve taslaklar (Supabase) ----
+        // Yayınlanabilir anahtar tarayıcıda açıkta durmak için tasarlanmıştır; veriyi giriş şifresi ve
+        // "taslaklar" tablosundaki satır güvenliği (herkes yalnızca kendi taslaklarını görür) korur.
+        // Kütüphane yüklenemezse (internet yok) sayfanın geri kalanı çalışmaya devam etsin diye kontrol edilir.
+        const sb = window.supabase ? supabase.createClient(
+            'https://gkbcefvuvejdsjjfpmnw.supabase.co',
+            'sb_publishable_QK93vQqZBBFI1oCIkr-NWg_1VwJhiFo'
+        ) : null;
+
+        let acikTaslakId = null;
+        let kaydedilmemisDegisiklik = false;
+
+        async function girisYap(e) {
+            e.preventDefault();
+            const dugme = document.getElementById('girisDugmesi');
+            const hata = document.getElementById('girisHata');
+            dugme.disabled = true;
+            hata.textContent = '';
+            const { error } = await sb.auth.signInWithPassword({
+                email: document.getElementById('girisEposta').value.trim(),
+                password: document.getElementById('girisSifre').value
+            });
+            dugme.disabled = false;
+            if (error) hata.textContent = error.message === 'Invalid login credentials' ? 'E-posta veya şifre hatalı.' : `Giriş yapılamadı: ${error.message}`;
+        }
+
+        async function cikisYap() {
+            if (kaydedilmemisDegisiklik && !confirm('Kaydedilmemiş değişiklikler var. Yine de çıkış yapılsın mı?')) return;
+            await sb.auth.signOut();
+        }
+
+        function oturumDegisti(oturum) {
+            document.getElementById('girisEkrani').classList.toggle('hidden', !!oturum);
+            document.getElementById('oturumEposta').textContent = oturum ? oturum.user.email : '';
+            if (oturum) {
+                document.getElementById('girisSifre').value = '';
+                taslaklariListele();
+            } else {
+                // Çıkışta ekranda dosya verisi kalmasın.
+                formuYukle({});
+                acikTaslakId = null;
+                degisiklikIsaretle(false);
+                document.getElementById('taslakListesi').innerHTML = '';
+            }
+        }
+
+        // Taslağa kaydedilen sabit alanlar ve yeni dosyada alacakları varsayılan değerler.
+        const TASLAK_ALANLARI = {
+            dosyaNo: '', icraDairesi: '', borcluAdi: '', taahhutTarihi: '', takipTarihi: '', talepMetni: '',
+            ihtarnameMasrafi: '', takipTaahhutArasiFaiz: '', vekaletUcreti: '', basvuruHarcı: '', pesinHarc: '',
+            tahsilHarciOrani: '9,10', tebligatGideri: '', masrafAvansi: '', gunBazi: '365', mahsupYontemi: 'tbk100'
+        };
+
+        function formuTopla() {
+            const alanlar = {};
+            Object.keys(TASLAK_ALANLARI).forEach(id => { alanlar[id] = document.getElementById(id).value; });
+            const gruplar = Array.from(document.querySelectorAll('.alacak-grubu')).map(kart => {
+                const grup = {};
+                ALACAK_GRUBU_ALANLARI.forEach(a => { grup[a.ad] = kart.querySelector(`.ag-${a.ad}`).value; });
+                return grup;
+            });
+            const taksitler = Array.from(document.querySelectorAll('.kademe-satir:not(.is-son-taksit)')).map(satir => ({
+                tarih: satir.querySelector('.taksit-tarih').value,
+                tutar: satir.querySelector('.taksit-tutar').value
+            }));
+            const sonTaksitTarihi = document.querySelector('.is-son-taksit .taksit-tarih')?.value || '';
+            return { alanlar, gruplar, taksitler, sonTaksitTarihi };
+        }
+
+        function formuYukle(veri) {
+            const alanlar = veri.alanlar || {};
+            Object.entries(TASLAK_ALANLARI).forEach(([id, varsayilan]) => {
+                document.getElementById(id).value = alanlar[id] ?? varsayilan;
+            });
+
+            document.getElementById('alacakGruplariListesi').innerHTML = '';
+            (veri.gruplar?.length ? veri.gruplar : [{}]).forEach(g => alacakGrubuEkle(g));
+
+            kademeleriBaslat();
+            (veri.taksitler || []).forEach(t => {
+                kademeEkle();
+                const araSatirlar = document.querySelectorAll('.kademe-satir:not(.is-son-taksit)');
+                const satir = araSatirlar[araSatirlar.length - 1];
+                satir.querySelector('.taksit-tarih').value = t.tarih || '';
+                satir.querySelector('.taksit-tutar').value = t.tutar || '';
+            });
+            document.querySelector('.is-son-taksit .taksit-tarih').value = veri.sonTaksitTarihi || '';
+
+            document.getElementById('metinDurumu').innerHTML = '';
+            hesaplaVeGuncelle();
+        }
+
+        // Her hesaplama bir değişiklik sayılır (yazma, satır ekleme/silme, metinden doldurma);
+        // taslak açma/kaydetme/yeni dosya gibi yükleme işlemleri bayrağı ardından sıfırlar.
+        function degisiklikIsaretle(durum) {
+            kaydedilmemisDegisiklik = durum;
+            acikTaslakBilgisiniGuncelle();
+        }
+
+        function acikTaslakBilgisiniGuncelle(mesaj) {
+            const kutu = document.getElementById('acikTaslakBilgisi');
+            const baslik = acikTaslakId ? `Açık taslak: ${taslakBasligi()}` : 'Yeni (kaydedilmemiş) dosya';
+            kutu.textContent = baslik + (kaydedilmemisDegisiklik ? ' • kaydedilmemiş değişiklik var' : '') + (mesaj ? ` • ${mesaj}` : '');
+            kutu.className = `text-xs mb-2 ${kaydedilmemisDegisiklik ? 'text-amber-700 font-semibold' : 'text-slate-500'}`;
+        }
+
+        function taslakBasligi() {
+            const dosyaNo = document.getElementById('dosyaNo').value.trim();
+            const borclu = document.getElementById('borcluAdi').value.trim();
+            return [dosyaNo, borclu].filter(Boolean).join(' – ') || 'Adsız dosya';
+        }
+
+        function taslakHatasi(islem, error) {
+            console.error(error);
+            const kutu = document.getElementById('acikTaslakBilgisi');
+            kutu.textContent = `❌ Taslak ${islem} başarısız: ${error.message}. İnternet bağlantısını kontrol edip tekrar deneyin.`;
+            kutu.className = 'text-xs mb-2 text-red-600 font-semibold';
+        }
+
+        async function taslaklariListele() {
+            const liste = document.getElementById('taslakListesi');
+            const { data, error } = await sb.from('taslaklar').select('id, baslik, guncelleme').order('guncelleme', { ascending: false });
+            if (error) return taslakHatasi('listesi alınamadı', error);
+
+            liste.innerHTML = '';
+            if (data.length === 0) {
+                liste.innerHTML = '<div class="p-3 text-slate-500 text-xs">Henüz taslak yok. Dosya bilgilerini girip "Kaydet"e basın.</div>';
+                return;
+            }
+            // Başlıklar kullanıcı girdisi olduğundan innerHTML yerine textContent ile yazılır.
+            data.forEach(t => {
+                const satir = document.createElement('div');
+                satir.className = `flex items-center gap-2 ${t.id === acikTaslakId ? 'bg-amber-50' : ''}`;
+                const ac = document.createElement('button');
+                ac.type = 'button';
+                ac.className = 'flex-1 text-left px-3 py-2.5 hover:bg-slate-50 min-w-0';
+                ac.onclick = () => taslakAc(t.id);
+                const ad = document.createElement('div');
+                ad.className = 'font-medium text-slate-800 truncate';
+                ad.textContent = t.baslik;
+                const tarih = document.createElement('div');
+                tarih.className = 'text-[11px] text-slate-500';
+                tarih.textContent = `Son kayıt: ${new Date(t.guncelleme).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}`;
+                ac.append(ad, tarih);
+                const sil = document.createElement('button');
+                sil.type = 'button';
+                sil.className = 'px-3 py-2.5 text-red-500 hover:text-red-700 font-bold';
+                sil.textContent = '✕';
+                sil.title = 'Taslağı sil';
+                sil.onclick = () => taslakSil(t.id, t.baslik);
+                satir.append(ac, sil);
+                liste.appendChild(satir);
+            });
+        }
+
+        async function taslakKaydet() {
+            const kayit = { baslik: taslakBasligi(), veri: formuTopla() };
+            const istek = acikTaslakId
+                ? sb.from('taslaklar').update(kayit).eq('id', acikTaslakId).select('id').single()
+                : sb.from('taslaklar').insert(kayit).select('id').single();
+            const { data, error } = await istek;
+            if (error) return taslakHatasi('kaydı', error);
+            acikTaslakId = data.id;
+            kaydedilmemisDegisiklik = false;
+            acikTaslakBilgisiniGuncelle(`kaydedildi (${new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })})`);
+            taslaklariListele();
+        }
+
+        async function taslakAc(id) {
+            if (kaydedilmemisDegisiklik && !confirm('Açık dosyada kaydedilmemiş değişiklikler var. Kaydetmeden başka taslak açılsın mı?')) return;
+            const { data, error } = await sb.from('taslaklar').select('veri').eq('id', id).single();
+            if (error) return taslakHatasi('açılması', error);
+            formuYukle(data.veri);
+            acikTaslakId = id;
+            degisiklikIsaretle(false);
+            taslaklariListele();
+        }
+
+        function yeniTaslak() {
+            if (kaydedilmemisDegisiklik && !confirm('Açık dosyada kaydedilmemiş değişiklikler var. Kaydetmeden yeni dosyaya geçilsin mi?')) return;
+            formuYukle({});
+            acikTaslakId = null;
+            degisiklikIsaretle(false);
+            taslaklariListele();
+        }
+
+        async function taslakSil(id, baslik) {
+            if (!confirm(`"${baslik}" taslağı kalıcı olarak silinsin mi?`)) return;
+            const { error } = await sb.from('taslaklar').delete().eq('id', id);
+            if (error) return taslakHatasi('silinmesi', error);
+            if (id === acikTaslakId) {
+                acikTaslakId = null;
+                degisiklikIsaretle(true);
+            }
+            taslaklariListele();
+        }
 
         // Her asıl alacak, takip talebindeki ferileriyle birlikte bir "grup" olarak tutulur.
         // Alanların sırası formdaki sıradır; "tarih" türündekiler date input olarak çizilir.
@@ -314,7 +575,7 @@
                 return `
                     <div class="${a.genis ? 'col-span-2' : ''}">
                         <label class="block text-[11px] font-medium text-slate-600 mb-1">${a.etiket}</label>
-                        <input type="${a.tur === 'tarih' ? 'date' : 'text'}" ${placeholder} class="ag-${a.ad} w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none${a.vurgulu ? ' font-semibold text-amber-800' : ''}" ${olay}="hesaplaVeGuncelle()">
+                        <input type="${a.tur === 'tarih' ? 'date' : 'text'}" ${a.tur === 'tutar' || a.tur === 'oran' ? 'inputmode="decimal"' : ''} ${placeholder} class="ag-${a.ad} w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none${a.vurgulu ? ' font-semibold text-amber-800' : ''}" ${olay}="hesaplaVeGuncelle()">
                     </div>`;
             }).join('');
 
@@ -669,7 +930,7 @@
                     <input type="text" placeholder="Tarih (GG.AA.YYYY)" value="${onerilenTarihStr}" class="taksit-tarih w-full px-2 py-1.5 border border-slate-300 rounded text-xs" oninput="hesaplaVeGuncelle()">
                 </div>
                 <div class="col-span-7 relative">
-                    <input type="text" placeholder="Tutar (TL)" value="${onerilenTutar}" class="taksit-tutar w-full px-2 py-1.5 border border-slate-300 rounded text-xs" oninput="hesaplaVeGuncelle()">
+                    <input type="text" inputmode="decimal" placeholder="Tutar (TL)" value="${onerilenTutar}" class="taksit-tutar w-full px-2 py-1.5 border border-slate-300 rounded text-xs" oninput="hesaplaVeGuncelle()">
                 </div>
                 <div class="col-span-1 text-center">
                     <button type="button" onclick="kademeSil(this)" class="text-red-500 font-bold hover:text-red-700">✕</button>
@@ -844,7 +1105,6 @@
             const vekaletUcreti = parseTrNumber(document.getElementById('vekaletUcreti').value);
             const basvuruHarcı = parseTrNumber(document.getElementById('basvuruHarcı').value);
             const pesinHarc = parseTrNumber(document.getElementById('pesinHarc').value);
-            const tahsilHarci = parseTrNumber(document.getElementById('tahsilHarci').value);
             const tahsilHarciOrani = parseTrNumber(document.getElementById('tahsilHarciOrani').value);
             const tebligatGideri = parseTrNumber(document.getElementById('tebligatGideri').value);
             const masrafAvansi = parseTrNumber(document.getElementById('masrafAvansi').value);
@@ -863,6 +1123,9 @@
                 .filter(a => a.tutar > 0);
             const toplamAnapara = anaparalar.reduce((s, a) => s + a.tutar, 0);
             const faizOranlari = [...new Set(alacakGruplari.filter(g => g.asilAlacak > 0).map(g => g.faizOrani))];
+            // Tahsil harcı, takip öncesi toplam alacak (takip çıkışı) üzerinden oranla hesaplanır.
+            const tahsilHarci = yuvarla2(toplamAlacak * tahsilHarciOrani / 100);
+            document.getElementById('tahsilHarci').value = tahsilHarci ? formatTrCurrency(tahsilHarci) : "";
             const toplamHarc = basvuruHarcı + pesinHarc + tahsilHarci;
             const toplamMasraf = tebligatGideri + masrafAvansi;
 
@@ -953,7 +1216,7 @@
 
             const alacakSatirlari = alacakKalemSatirlari(alacakGruplari, takipTarihiStr);
             const araDonemAralik = takipTarihiStr ? ` (${takipTarihiStr}-${taahhutTarihiFormatli} TARİHLERİ ARASI)` : "";
-            const tahsilHarciOraniStr = tahsilHarciOrani ? ` ( %${tahsilHarciOrani} )` : "";
+            const tahsilHarciOraniStr = tahsilHarciOrani ? ` ( %${formatTrCurrency(tahsilHarciOrani)} )` : "";
 
             const gecerliTaksitler = taksitListesiData.filter(t => t.tarihObj);
             let acilisCumlesi = "";
@@ -1029,6 +1292,7 @@
                 guncelBakiye, toplamTaahhutSonrasiFaizVergili, toplamOdenecekMeblag, taksitListesiData, acilisCumlesi,
                 borcluAdi, dosyaNo, icraDairesi, taahhutTarihiVal, taahhutTarihiFormatli, baslangicTarihiStr, bitisTarihiStr
             };
+            degisiklikIsaretle(true);
         }
 
         // Son taksit artık her değişiklikte otomatik hesaplanıyor; buton yalnızca yeniden hesaplatır ve dökümü gösterir.
@@ -1080,7 +1344,7 @@
             const { Document, Packer, Paragraph, TextRun, AlignmentType, TabStopType } = window.docx;
 
             const araDonemAralik = d.takipTarihiStr ? ` (${d.takipTarihiStr}-${d.taahhutTarihiFormatli} TARİHLERİ ARASI)` : "";
-            const tahsilHarciOraniStr = d.tahsilHarciOrani ? ` ( %${d.tahsilHarciOrani} )` : "";
+            const tahsilHarciOraniStr = d.tahsilHarciOrani ? ` ( %${formatTrCurrency(d.tahsilHarciOrani)} )` : "";
 
             let docChildren = [
                 new Paragraph({ children: [new TextRun({ text: "T.C.", bold: true, size: 22 })], alignment: AlignmentType.CENTER }),
