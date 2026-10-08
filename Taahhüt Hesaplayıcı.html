@@ -26,7 +26,7 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
-    <!-- GİRİŞ EKRANI: taslaklar Supabase'de saklandığı için uygulama oturum açılmadan kullanılamaz -->
+    <!-- GİRİŞ EKRANI: taslaklar için giriş gerekir; giriş yapmadan da yalnızca hesaplama yapılabilir -->
     <div id="girisEkrani" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center p-4">
         <form onsubmit="girisYap(event)" class="bg-white w-full max-w-sm rounded-xl shadow-lg p-6 space-y-4">
             <div class="flex items-center gap-3">
@@ -34,8 +34,8 @@
                 <h1 class="text-lg font-bold text-slate-900">İcra & Taahhüt Hesaplayıcı</h1>
             </div>
             <div>
-                <label class="block text-xs font-medium text-slate-600 mb-1">E-posta</label>
-                <input type="email" id="girisEposta" autocomplete="username" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                <label class="block text-xs font-medium text-slate-600 mb-1">Kullanıcı Adı</label>
+                <input type="text" id="girisKullaniciAdi" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-base focus:ring-2 focus:ring-amber-500 focus:outline-none">
             </div>
             <div>
                 <label class="block text-xs font-medium text-slate-600 mb-1">Şifre</label>
@@ -43,6 +43,10 @@
             </div>
             <button type="submit" id="girisDugmesi" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2.5 rounded-lg transition">Giriş Yap</button>
             <div id="girisHata" class="text-xs text-red-600"></div>
+            <div class="border-t border-slate-200 pt-4">
+                <button type="button" onclick="misafirDevamEt()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 rounded-lg transition">Giriş yapmadan devam et</button>
+                <p class="text-[11px] text-slate-500 mt-2 text-center">Yalnızca hesaplama yapılır, taslaklar kullanılamaz. İnternet olmadan da çalışır.</p>
+            </div>
         </form>
     </div>
 
@@ -56,8 +60,8 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 text-xs sm:text-sm shrink-0">
-                <span id="oturumEposta" class="text-slate-300 hidden sm:inline"></span>
-                <button type="button" onclick="cikisYap()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-200">Çıkış</button>
+                <span id="oturumKullanici" class="text-slate-300 hidden sm:inline"></span>
+                <button type="button" id="oturumDugmesi" onclick="oturumDugmesineBasildi()" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 text-slate-200">Çıkış</button>
             </div>
         </div>
     </header>
@@ -68,7 +72,7 @@
         <div class="lg:col-span-6 space-y-6">
 
             <!-- TASLAKLAR: haciz öncesi hazırlanan dosyalar; bilgisayarda kaydedilip telefonda açılır -->
-            <div class="bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-200">
+            <div id="taslakPaneli" class="bg-white p-4 sm:p-6 rounded-xl shadow-xs border border-slate-200">
                 <div class="flex justify-between items-center gap-2 mb-3">
                     <h2 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
                         <span>🗂️</span> Taslaklar
@@ -333,18 +337,25 @@
             hesaplaVeGuncelle();
             degisiklikIsaretle(false);
 
+            if ('serviceWorker' in navigator && window.isSecureContext) {
+                navigator.serviceWorker.register('sw.js').catch(err => console.warn('Çevrimdışı önbellek kurulamadı:', err));
+            }
+
             if (!sb) {
-                document.getElementById('girisHata').textContent = 'Sunucuya bağlanılamadı. İnternet bağlantısını kontrol edip sayfayı yenileyin.';
+                // İnternet yokken giriş kütüphanesi yüklenemez; hesaplama yine de misafir olarak kullanılabilir.
+                document.getElementById('girisHata').textContent = 'İnternet bağlantısı yok, giriş yapılamıyor. "Giriş yapmadan devam et" ile hesaplama yapabilirsiniz.';
+                document.getElementById('girisDugmesi').disabled = true;
                 return;
             }
             sb.auth.onAuthStateChange((olay, oturum) => {
                 // Supabase, bu geri çağrının içinden başka istek atılmasını önermiyor; iş bir sonraki tura bırakılır.
                 setTimeout(async () => {
                     // Tarayıcıda saklı oturum, kullanıcı silinmiş ya da şifresi değişmiş olsa da süresi dolana
-                    // kadar geçerli görünür; sayfa açılışında sunucuya sorularak doğrulanır.
+                    // kadar geçerli görünür; sayfa açılışında sunucuya sorularak doğrulanır. Sunucuya hiç
+                    // ulaşılamıyorsa (internet yok) oturum korunur, yalnızca sunucu reddederse çıkış yapılır.
                     if (olay === 'INITIAL_SESSION' && oturum) {
                         const { error } = await sb.auth.getUser();
-                        if (error) return sb.auth.signOut({ scope: 'local' });
+                        if (error && error.status >= 400 && error.status < 500) return sb.auth.signOut({ scope: 'local' });
                     }
                     oturumDegisti(oturum);
                 }, 0);
@@ -363,32 +374,65 @@
         let acikTaslakId = null;
         let kaydedilmemisDegisiklik = false;
 
+        // Supabase girişi e-posta biçimi ister; kullanıcı adı, hiçbir zaman gerçek olamayacak ".invalid"
+        // uzantılı bir adrese çevrilir. Hesap Supabase panelinde "kullaniciadi@taahhut.invalid" olarak açılır.
+        const KULLANICI_ALANI = '@taahhut.invalid';
+        let misafirModu = false;
+
         async function girisYap(e) {
             e.preventDefault();
             const dugme = document.getElementById('girisDugmesi');
             const hata = document.getElementById('girisHata');
+            const kullaniciAdi = document.getElementById('girisKullaniciAdi').value.trim().toLowerCase();
+            if (!/^[a-z0-9._-]+$/.test(kullaniciAdi)) {
+                hata.textContent = 'Kullanıcı adında yalnızca İngilizce harf, rakam, nokta, tire ve alt çizgi kullanılabilir.';
+                return;
+            }
             dugme.disabled = true;
             hata.textContent = '';
             const { error } = await sb.auth.signInWithPassword({
-                email: document.getElementById('girisEposta').value.trim(),
+                email: kullaniciAdi + KULLANICI_ALANI,
                 password: document.getElementById('girisSifre').value
             });
             dugme.disabled = false;
-            if (error) hata.textContent = error.message === 'Invalid login credentials' ? 'E-posta veya şifre hatalı.' : `Giriş yapılamadı: ${error.message}`;
+            if (!error) return;
+            if (error.message === 'Invalid login credentials') hata.textContent = 'Kullanıcı adı veya şifre hatalı.';
+            else if (!error.status) hata.textContent = 'Sunucuya ulaşılamadı. İnternet yoksa "Giriş yapmadan devam et" ile hesaplama yapabilirsiniz.';
+            else hata.textContent = `Giriş yapılamadı: ${error.message}`;
         }
 
-        async function cikisYap() {
+        function misafirDevamEt() {
+            misafirModu = true;
+            arayuzuGuncelle(null);
+        }
+
+        // Başlıktaki düğme: oturum açıksa çıkış yapar, misafir modundaysa giriş ekranını geri açar.
+        async function oturumDugmesineBasildi() {
+            if (misafirModu) {
+                misafirModu = false;
+                document.getElementById('girisEkrani').classList.remove('hidden');
+                return;
+            }
             if (kaydedilmemisDegisiklik && !confirm('Kaydedilmemiş değişiklikler var. Yine de çıkış yapılsın mı?')) return;
             await sb.auth.signOut();
         }
 
+        function arayuzuGuncelle(oturum) {
+            document.getElementById('girisEkrani').classList.toggle('hidden', !!oturum || misafirModu);
+            document.getElementById('taslakPaneli').classList.toggle('hidden', !oturum);
+            document.getElementById('oturumKullanici').textContent = oturum
+                ? oturum.user.email.replace(KULLANICI_ALANI, '')
+                : (misafirModu ? 'Giriş yapılmadı' : '');
+            document.getElementById('oturumDugmesi').textContent = oturum ? 'Çıkış' : 'Giriş Yap';
+        }
+
         function oturumDegisti(oturum) {
-            document.getElementById('girisEkrani').classList.toggle('hidden', !!oturum);
-            document.getElementById('oturumEposta').textContent = oturum ? oturum.user.email : '';
+            if (oturum) misafirModu = false;
+            arayuzuGuncelle(oturum);
             if (oturum) {
                 document.getElementById('girisSifre').value = '';
                 taslaklariListele();
-            } else {
+            } else if (!misafirModu) {
                 // Çıkışta ekranda dosya verisi kalmasın.
                 formuYukle({});
                 acikTaslakId = null;
