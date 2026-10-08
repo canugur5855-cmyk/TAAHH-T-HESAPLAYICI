@@ -40,7 +40,7 @@
                     <span>📸</span> UYAP Takip Talebi Ekran Görüntüsünden Akıllı Otomatik Doldurma
                 </h2>
                 <p class="text-xs text-amber-700 mb-4">
-                    Takip talebi ekran görüntüsünü buraya sürükleyip bırakın ya da tıklayarak seçin. Ana para, faiz oranı, akdi faiz, işlemiş faiz, ihtarname masrafı ve BSMV, görüntüdeki etiketlerine göre otomatik yerleştirilir. Tarama tamamen bu tarayıcıda çalışır, görsel hiçbir yere gönderilmez (ilk kullanımda Türkçe tarama verisi indirmek için internet gerekir, sonrasında önbellekten çalışır).
+                    Takip talebi ekran görüntüsünü buraya sürükleyip bırakın ya da tıklayarak seçin. Ana para, faiz oranı, faizsiz istenen asıl alacak, kat öncesi faiz, akdi faiz, işlemiş faiz, ihtarname masrafı ve BSMV, görüntüdeki etiketlerine göre otomatik yerleştirilir; birden çok asıl alacak varsa her biri ferileriyle ayrı kaleme alınır. Tarama tamamen bu tarayıcıda çalışır, görsel hiçbir yere gönderilmez (ilk kullanımda Türkçe tarama verisi indirmek için internet gerekir, sonrasında önbellekten çalışır).
                 </p>
 
                 <div id="dropZone" class="border-2 border-dashed border-amber-300 bg-white/80 rounded-xl p-5 text-center hover:bg-white transition cursor-pointer relative" onclick="document.getElementById('ekranDosyaInput').click()">
@@ -49,6 +49,15 @@
                         <div class="text-3xl">📁</div>
                         <div class="text-xs font-semibold text-slate-700" id="yuklemeDurumMetni">Görsel Seçmek için Tıklayın veya Sürükleyip Bırakın</div>
                         <div class="text-[10px] text-slate-500">PNG, JPG formatları desteklenir</div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label class="block text-xs font-semibold text-amber-900 mb-1">…ya da takip talebi metnini yapıştırın (en güvenilir yol)</label>
+                    <textarea id="talepMetni" rows="5" placeholder="250.000,00 TL Asıl alacak (İstenen:%70.98 Yıllık Diğer)&#10;40.660,44 TL Faizsiz İstenen Asıl Alacak&#10;..." class="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                    <div class="flex items-center gap-3 mt-2">
+                        <button type="button" onclick="metindenVeriOku()" class="text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium py-1.5 px-3 rounded-lg transition">Metinden Doldur</button>
+                        <div id="metinDurumu" class="text-xs"></div>
                     </div>
                 </div>
             </div>
@@ -93,49 +102,20 @@
                 </h2>
                 <div class="grid grid-cols-2 gap-4">
                     
-                    <div class="col-span-2 bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3">
-                        <span class="text-xs font-bold text-slate-700 block">Takip Açılış / Başlangıç Kalemleri (UYAP Entegre)</span>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="col-span-2">
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Hesap / Kredi No</label>
-                                <input type="text" id="hesapNo" value="" placeholder="5578292293271718" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Ana Para (TL)</label>
-                                <input type="text" id="asilAlacak" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Temerrüt / Yıllık Faiz Oranı (%)</label>
-                                <input type="text" id="yillikFaizOrani" value="" placeholder="0" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-amber-800" oninput="hesaplaVeGuncelle()">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Akdi Faiz (TL)</label>
-                                <input type="text" id="akdiFaiz" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Akdi Faiz Oranı (%)</label>
-                                <input type="text" id="akdiFaizOrani" value="" placeholder="0" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Akdi Faiz Başlangıç Tarihi</label>
-                                <input type="date" id="akdiFaizBaslangic" value="" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="hesaplaVeGuncelle()">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Hesap Kesim Tarihi (Akdi Faiz Bitiş / İşlemiş Faiz Başlangıç)</label>
-                                <input type="date" id="hesapKesimTarihi" value="" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="hesaplaVeGuncelle()">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">Takip Öncesi İşlemiş Faiz (TL)</label>
-                                <input type="text" id="islemişFaiz" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">İhtarname Masrafı (TL)</label>
-                                <input type="text" id="ihtarnameMasrafi" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
-                            </div>
-                            <div>
-                                <label class="block text-[11px] font-medium text-slate-600 mb-1">BSMV Toplamı (TL)</label>
-                                <input type="text" id="bsmv" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
-                            </div>
+                    <div class="col-span-2 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-700">Takip Açılış / Başlangıç Kalemleri (UYAP Entegre)</span>
+                            <button type="button" onclick="alacakGrubuEkle(); hesaplaVeGuncelle()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-1.5 px-3 rounded-lg transition">+ Asıl Alacak Ekle</button>
+                        </div>
+                        <p class="text-[10px] text-slate-500">Takip talebinde birden çok asıl alacak varsa her biri kendi faiz oranı ve ferileriyle ayrı kalem olarak girilir; görselden okumada kalemler otomatik ayrılır.</p>
+
+                        <div id="alacakGruplariListesi" class="space-y-3">
+                            <!-- Dinamik asıl alacak grupları -->
+                        </div>
+
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                            <label class="block text-[11px] font-medium text-slate-600 mb-1">İhtarname Masrafı (TL)</label>
+                            <input type="text" id="ihtarnameMasrafi" value="" placeholder="0,00" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" oninput="hesaplaVeGuncelle()">
                         </div>
                     </div>
 
@@ -194,12 +174,8 @@
                             <option value="360">360 gün (yalnızca sözleşmede açık hüküm varsa)</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-[11px] font-medium text-slate-600 mb-1">Taksitlerin Mahsup Sırası</label>
-                        <select id="mahsupYontemi" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="hesaplaVeGuncelle()">
-                            <option value="tbk100" selected>TBK m.100: önce faiz ve masraflar, sonra asıl alacak</option>
-                            <option value="anapara">Doğrudan asıl alacaktan düş (eski yöntem)</option>
-                        </select>
+                    <div class="text-[11px] text-slate-500 self-end pb-1">
+                        Taksitler önce asıl alacaktan düşülür; faiz kalan anapara üzerinden işler ve anapara bitince durur.
                     </div>
                 </div>
 
@@ -302,20 +278,274 @@
                 }
             }, false);
 
+            alacakGrubuEkle();
             kademeleriBaslat();
             hesaplaVeGuncelle();
         });
 
-        // OCR metninde bir etiketten HEMEN ÖNCE gelen "TUTAR TL" ifadesini bulur.
-        // Etiket ile tutar arasında hesap/kredi numarası gibi rakam-tire içeren kısımlar olabilir,
-        // bunlar atlanır; ama araya başka bir kelime girerse (yanlış etikete atlamamak için) eşleşme aranmaz.
-        function ocrEtiketOncesiTutar(text, etiketKaynagi) {
-            const re = new RegExp(
-                `([0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{1,2})?)\\s*TL[\\s0-9\\-.,]{0,40}?(?:${etiketKaynagi})`,
-                'i'
-            );
-            const m = text.match(re);
-            return m ? m[1] : null;
+        // Her asıl alacak, takip talebindeki ferileriyle birlikte bir "grup" olarak tutulur.
+        // Alanların sırası formdaki sıradır; "tarih" türündekiler date input olarak çizilir.
+        const ALACAK_GRUBU_ALANLARI = [
+            { ad: 'hesapNo', etiket: 'Hesap / Kredi No', tur: 'metin', placeholder: '5578292293271718', genis: true },
+            { ad: 'asilAlacak', etiket: 'Asıl Alacak / Ana Para (TL)', tur: 'tutar' },
+            { ad: 'faizOrani', etiket: 'Temerrüt / Yıllık Faiz Oranı (%)', tur: 'oran', vurgulu: true },
+            { ad: 'faizsizAsil', etiket: 'Faizsiz İstenen Asıl Alacak (TL)', tur: 'tutar' },
+            { ad: 'katOncesi', etiket: 'Kat Öncesi İşlemiş Faiz ve Ferileri (TL)', tur: 'tutar' },
+            { ad: 'akdiFaiz', etiket: 'Akdi Faiz (TL)', tur: 'tutar' },
+            { ad: 'akdiFaizOrani', etiket: 'Akdi Faiz Oranı (%)', tur: 'oran' },
+            { ad: 'akdiFaizBaslangic', etiket: 'Akdi Faiz Başlangıç Tarihi', tur: 'tarih' },
+            { ad: 'hesapKesimTarihi', etiket: 'Hesap Kesim Tarihi (İşlemiş Faiz Başlangıç)', tur: 'tarih' },
+            { ad: 'islemisFaiz', etiket: 'Takip Öncesi İşlemiş Faiz (TL)', tur: 'tutar' },
+            { ad: 'bsmv', etiket: 'BSMV Toplamı (TL)', tur: 'tutar' }
+        ];
+
+        function alacakGrubuEkle(veri = {}) {
+            const liste = document.getElementById('alacakGruplariListesi');
+            const kart = document.createElement('div');
+            kart.className = "alacak-grubu bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-3";
+
+            const alanlarHtml = ALACAK_GRUBU_ALANLARI.map(a => {
+                const olay = a.tur === 'tarih' ? 'onchange' : 'oninput';
+                const placeholder = a.tur === 'tarih' ? '' : `placeholder="${a.placeholder || (a.tur === 'oran' ? '0' : '0,00')}"`;
+                return `
+                    <div class="${a.genis ? 'col-span-2' : ''}">
+                        <label class="block text-[11px] font-medium text-slate-600 mb-1">${a.etiket}</label>
+                        <input type="${a.tur === 'tarih' ? 'date' : 'text'}" ${placeholder} class="ag-${a.ad} w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none${a.vurgulu ? ' font-semibold text-amber-800' : ''}" ${olay}="hesaplaVeGuncelle()">
+                    </div>`;
+            }).join('');
+
+            kart.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="ag-baslik text-xs font-bold text-amber-800"></span>
+                    <button type="button" onclick="alacakGrubuSil(this)" class="ag-sil text-red-500 font-bold hover:text-red-700 text-xs">✕ Kaldır</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3">${alanlarHtml}</div>
+            `;
+
+            // Değerler innerHTML yerine DOM üzerinden verilir; OCR metni HTML olarak yorumlanmaz.
+            ALACAK_GRUBU_ALANLARI.forEach(a => {
+                if (veri[a.ad] != null) kart.querySelector(`.ag-${a.ad}`).value = veri[a.ad];
+            });
+
+            liste.appendChild(kart);
+            alacakGruplariniNumarala();
+        }
+
+        function alacakGrubuSil(btn) {
+            btn.closest('.alacak-grubu').remove();
+            alacakGruplariniNumarala();
+            hesaplaVeGuncelle();
+        }
+
+        function alacakGruplariniNumarala() {
+            const kartlar = document.querySelectorAll('.alacak-grubu');
+            kartlar.forEach((kart, i) => {
+                kart.querySelector('.ag-baslik').textContent = `${i + 1}. Asıl Alacak ve Ferileri`;
+                kart.querySelector('.ag-sil').classList.toggle('hidden', kartlar.length === 1);
+            });
+        }
+
+        function alacakGruplariniOku() {
+            return Array.from(document.querySelectorAll('.alacak-grubu')).map(kart => {
+                const grup = {};
+                ALACAK_GRUBU_ALANLARI.forEach(a => {
+                    const deger = kart.querySelector(`.ag-${a.ad}`).value;
+                    grup[a.ad] = (a.tur === 'tutar' || a.tur === 'oran') ? parseTrNumber(deger) : deger.trim();
+                });
+                grup.akdiFaizBaslangicStr = formatDateInputTr(grup.akdiFaizBaslangic);
+                grup.hesapKesimTarihiStr = formatDateInputTr(grup.hesapKesimTarihi);
+                grup.toplam = grup.asilAlacak + grup.faizsizAsil + grup.katOncesi + grup.akdiFaiz + grup.islemisFaiz + grup.bsmv;
+                return grup;
+            });
+        }
+
+        // Belgeye yazılacak alacak satırları (önizleme ve Word aynı listeyi kullanır).
+        // Asıl alacak, işlemiş faiz ve BSMV her grupta yazılır; diğer feriler yalnızca tutarı varsa.
+        function alacakKalemSatirlari(gruplar, takipTarihiStr) {
+            const satirlar = [];
+            gruplar.forEach(g => {
+                const onEk = g.hesapNo ? `${g.hesapNo} - ` : "";
+                const akdiAralik = (g.akdiFaizBaslangicStr || g.hesapKesimTarihiStr) ? ` (${g.akdiFaizBaslangicStr}-${g.hesapKesimTarihiStr})` : "";
+                const islemisAralik = (g.hesapKesimTarihiStr || takipTarihiStr) ? ` (${g.hesapKesimTarihiStr}-${takipTarihiStr})` : "";
+
+                satirlar.push({ tutar: g.asilAlacak, metin: `${onEk}Asıl Alacak (Temerrüt Faiz Oranı %${g.faizOrani}'dır.)` });
+                if (g.faizsizAsil) satirlar.push({ tutar: g.faizsizAsil, metin: `${onEk}Faizsiz İstenen Asıl Alacak` });
+                if (g.katOncesi) satirlar.push({ tutar: g.katOncesi, metin: `${onEk}Kat Öncesi İşlemiş Faiz ve Ferileri` });
+                if (g.akdiFaiz) satirlar.push({ tutar: g.akdiFaiz, metin: `${onEk}Akdi Faiz${g.akdiFaizOrani ? ' %' + g.akdiFaizOrani : ''}${akdiAralik}` });
+                satirlar.push({ tutar: g.islemisFaiz, metin: `${onEk}İşlemiş Faiz${g.faizOrani ? ' %' + g.faizOrani : ''}${islemisAralik}` });
+                satirlar.push({ tutar: g.bsmv, metin: `${onEk}BSMV Toplamı` });
+            });
+            return satirlar;
+        }
+
+        function tarihIso(str) {
+            const d = parseDateString(str);
+            if (!d) return null;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        // OCR'da "%" işareti çoğu zaman rakam ya da simge olarak okunur ("%70.98" → "470.98", "9»54.6", "9072.00").
+        // Oran "%", "İstenen:" ya da "Yıllık" sözcüğünden sonra aranır; 100'ü aşıyorsa baştaki bozuk karakter atılır.
+        function ocrOranAyikla(etiket) {
+            const tarihsiz = etiket.replace(/\d{1,3}[\/.]\d{1,3}[\/.]\d{4}/g, ' ');
+            const m = tarihsiz.match(/(?:%|[İIi]stenen\s*:|Y[ıi]l+[ıi]?k)[\s,.:—\-]*([^\sA-Za-zÇĞİÖŞÜçğıöşü()]+(?:\s[0-9]{2}\b)?)/i);
+            if (!m) return null;
+            const parca = m[1].replace(/\s/, '.').replace(/[^0-9.,]/g, '').match(/([0-9]+)(?:[.,]([0-9]{1,2}))?$/);
+            if (!parca) return null;
+            let tam = parca[1];
+            while (tam.length > 1 && parseInt(tam, 10) > 100) tam = tam.slice(1);
+            const oran = String(parseInt(tam, 10)) + (parca[2] ? '.' + parca[2] : '');
+            return parseTrNumber(oran) > 0 ? oran : null;
+        }
+
+        // OCR metnini satır satır ayrıştırıp asıl alacak gruplarına böler. UYAP takip talebinde her kalem
+        // "TUTAR TL Etiket" diye başlar; "TL" OCR'da sık bozulduğu için satır başındaki kuruşlu tutar esas alınır.
+        // Tutarla başlamayan satırlar (ör. "Diğer)", "(30/11/2025-25/02/2026)") önceki kalemin devamıdır;
+        // ancak bir kalem etiketi içerip tutarı okunamayan satırlar kullanıcıya bildirilmek üzere ayrılır.
+        // Her "Asıl Alacak" yeni bir grup başlatır; ardından gelen faizsiz asıl alacak, kat öncesi faiz,
+        // akdi/işlemiş faiz ve BSMV satırları o asıl alacağın ferisi sayılır.
+        function ocrAlacakGruplariniAyristir(text) {
+            const tutarRe = /^[^0-9A-Za-zÇĞİÖŞÜçğıöşü]{0,3}([0-9]{1,3}(?:[. ][0-9]{3})+[.,][0-9]{2}|[0-9]+[.,][0-9]{2})(?![0-9])(.*)$/;
+            const kalemEtiketiRe = /faizsiz|kat\s*[öo]ncesi|as[ıi]l\s*alacak|akdi|[İIıi][şs]lemi[şs]|bsmv|ihtarname|t[ao][pn]?lam\s*alacak/i;
+
+            const kalemler = [];
+            const sonuc = { gruplar: [], ihtarnameMasrafi: null, takipTarihi: null, toplamAlacak: null, okunanTutarSayisi: 0, okunamayanSatirlar: [], duzeltilenOranSayisi: 0 };
+            // Yapıştırılan metin tek satıra yığılmış olabilir; her "TUTAR TL" öncesinde satır kırılır.
+            const satirlar = text.replace(/(?<![0-9.,]|[0-9] )([0-9]{1,3}(?:\.[0-9]{3})*,[0-9]{2}\s*TL\b)/g, '\n$1').split(/\r?\n/);
+            satirlar.map(s => s.trim()).filter(Boolean).forEach(satir => {
+                const onceki = kalemler[kalemler.length - 1];
+                const m = satir.match(tutarRe);
+                if (m) {
+                    // Ayırıcılar OCR'da karışır ("42.883.75", "1416.14"); son iki hane her zaman kuruştur.
+                    const rakamlar = m[1].replace(/[^0-9]/g, '');
+                    const tutar = formatTrCurrency(parseInt(rakamlar.slice(0, -2), 10) + parseInt(rakamlar.slice(-2), 10) / 100);
+                    kalemler.push({ tutar, etiket: m[2] });
+                } else if (onceki && !kalemEtiketiRe.test(onceki.etiket)) {
+                    // Tutar ve etiket ayrı satırlarda (ör. tablodan kopyalama): etiket, etiketsiz tutara bağlanır.
+                    onceki.etiket += ' ' + satir;
+                } else if (/t[ao][pn]?lam\s*alacak/i.test(satir)) {
+                    // Tutarı okunamayan toplam satırı: girilecek bir kalem değil, önceki kaleme de eklenmemeli.
+                } else if (kalemEtiketiRe.test(satir)) {
+                    sonuc.okunamayanSatirlar.push(satir);
+                } else if (onceki) {
+                    onceki.etiket += ' ' + satir;
+                }
+            });
+
+            let grup = null;
+            const yeniGrup = () => { grup = {}; sonuc.gruplar.push(grup); return grup; };
+            const aktifGrup = () => grup || yeniGrup();
+
+            kalemler.forEach(({ tutar, etiket }) => {
+                etiket = etiket.replace(/\s+/g, ' ').trim();
+                const oran = ocrOranAyikla(etiket);
+                const aralik = etiket.match(/(\d{1,2}[\/.]\d{1,2}[\/.]\d{4})\s*-\s*(\d{1,2}[\/.]\d{1,2}[\/.]\d{4})/);
+                const hesapNo = etiket.match(/(?:^|\s)([0-9]{6,})\s*-\s*(?=[A-Za-zÇĞİÖŞÜçğıöşü])/)?.[1];
+                if (oran && !new RegExp(`%\\s*${oran.replace('.', '\\.')}`).test(etiket)) sonuc.duzeltilenOranSayisi++;
+
+                // Sıra önemli: "Faizsiz İstenen Asıl Alacak" asıl alacak, "Kat öncesi işlemiş faiz" işlemiş faiz sanılmamalı.
+                if (/t[ao][pn]?lam\s*alacak/i.test(etiket)) { sonuc.toplamAlacak = tutar; return; }
+                if (/toplam/i.test(etiket)) return;
+                if (/[İIıi]htarname/i.test(etiket)) { sonuc.ihtarnameMasrafi = tutar; sonuc.okunanTutarSayisi++; return; }
+
+                if (/faizsiz/i.test(etiket)) {
+                    aktifGrup().faizsizAsil = tutar;
+                } else if (/kat\s*[öo]ncesi|ferileri/i.test(etiket)) {
+                    aktifGrup().katOncesi = tutar;
+                } else if (/as[ıi]l\s*alacak/i.test(etiket)) {
+                    yeniGrup().asilAlacak = tutar;
+                    if (oran) grup.faizOrani = oran;
+                } else if (/akdi[\s—\-.,]*faiz/i.test(etiket)) {
+                    aktifGrup().akdiFaiz = tutar;
+                    if (oran) grup.akdiFaizOrani = oran;
+                    if (aralik) {
+                        grup.akdiFaizBaslangic = tarihIso(aralik[1]);
+                        grup.hesapKesimTarihi = grup.hesapKesimTarihi || tarihIso(aralik[2]);
+                    }
+                } else if (/[İIıi][şs]lemi[şs][\s—\-.,]*faiz/i.test(etiket)) {
+                    aktifGrup().islemisFaiz = tutar;
+                    if (oran && !grup.faizOrani) grup.faizOrani = oran;
+                    if (aralik) {
+                        grup.hesapKesimTarihi = tarihIso(aralik[1]);
+                        sonuc.takipTarihi = sonuc.takipTarihi || tarihIso(aralik[2]);
+                    }
+                } else if (/BSMV/i.test(etiket)) {
+                    aktifGrup().bsmv = tutar;
+                } else {
+                    return;
+                }
+                sonuc.okunanTutarSayisi++;
+                if (hesapNo && !grup.hesapNo) grup.hesapNo = hesapNo;
+            });
+            return sonuc;
+        }
+
+        // Küçük ekran görüntülerinde Tesseract rakam ve işaretleri bozuk okur ve hangi satırı bozacağı
+        // büyütme oranına göre değişir. Bu yüzden küçük görseller birkaç farklı büyütmeyle okunur ve
+        // her alan için çoğunluğun okuduğu değer alınır; okumaların ayrıştığı alanlar kullanıcıya bildirilir.
+        async function ocrCokluOku(file, ilerleme) {
+            const bmp = await createImageBitmap(file);
+            const olcekler = bmp.width < 1000 ? [2, 3, 4] : bmp.width < 2000 ? [1, 2] : [1];
+            const worker = await Tesseract.createWorker('tur');
+            const sonuclar = [];
+            try {
+                for (const [i, olcek] of olcekler.entries()) {
+                    ilerleme(i + 1, olcekler.length);
+                    const c = document.createElement('canvas');
+                    c.width = bmp.width * olcek;
+                    c.height = bmp.height * olcek;
+                    const ctx = c.getContext('2d');
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(0, 0, c.width, c.height);
+                    ctx.filter = 'grayscale(1)';
+                    ctx.drawImage(bmp, 0, 0, c.width, c.height);
+                    const { data: { text } } = await worker.recognize(c);
+                    sonuclar.push(ocrAlacakGruplariniAyristir(text));
+                }
+            } finally {
+                await worker.terminate();
+            }
+            return ocrOkumalariniBirlestir(sonuclar);
+        }
+
+        function ocrOkumalariniBirlestir(sonuclar) {
+            if (sonuclar.length === 1) return { ...sonuclar[0], celiskiliAlanSayisi: 0 };
+
+            let celiskiliAlanSayisi = 0;
+            const cogunluk = (degerler) => {
+                const sayac = new Map();
+                degerler.filter(d => d != null).forEach(d => sayac.set(d, (sayac.get(d) || 0) + 1));
+                if (sayac.size === 0) return null;
+                if (sayac.size > 1 || degerler.some(d => d == null)) celiskiliAlanSayisi++;
+                return [...sayac.entries()].sort((a, b) => b[1] - a[1])[0][0];
+            };
+
+            // Grup sayısında çoğunluğa uymayan okumalar (ör. bir asıl alacak satırını kaçıran) dışarıda bırakılır.
+            const grupSayisi = Number(cogunluk(sonuclar.map(s => String(s.gruplar.length))));
+            const uyanlar = sonuclar.filter(s => s.gruplar.length === grupSayisi);
+            const gruplar = Array.from({ length: grupSayisi }, (_, i) => {
+                const grup = {};
+                const anahtarlar = new Set(uyanlar.flatMap(s => Object.keys(s.gruplar[i])));
+                anahtarlar.forEach(k => {
+                    const deger = cogunluk(uyanlar.map(s => s.gruplar[i][k] ?? null));
+                    if (deger != null) grup[k] = deger;
+                });
+                return grup;
+            });
+
+            const okunanTutarSayisi = gruplar.reduce((s, g) => s + ['asilAlacak', 'faizsizAsil', 'katOncesi', 'akdiFaiz', 'islemisFaiz', 'bsmv'].filter(k => g[k]).length, 0);
+            const ihtarnameMasrafi = cogunluk(uyanlar.map(s => s.ihtarnameMasrafi));
+            return {
+                gruplar,
+                ihtarnameMasrafi,
+                takipTarihi: cogunluk(uyanlar.map(s => s.takipTarihi)),
+                toplamAlacak: cogunluk(uyanlar.map(s => s.toplamAlacak)),
+                okunanTutarSayisi: okunanTutarSayisi + (ihtarnameMasrafi ? 1 : 0),
+                okunamayanSatirlar: [],
+                duzeltilenOranSayisi: Math.max(...uyanlar.map(s => s.duzeltilenOranSayisi)),
+                celiskiliAlanSayisi
+            };
         }
 
         // Tarayıcı içi OCR (Tesseract.js) ile UYAP takip talebi ekran görüntüsünden veri çıkarımı.
@@ -327,52 +557,61 @@
             durumMetni.innerHTML = `<span class="text-amber-600 font-bold">🔎 "${file.name}" taranıyor (ilk kullanımda dil verisi indirilir, biraz sürebilir)...</span>`;
 
             try {
-                const { data: { text } } = await Tesseract.recognize(file, 'tur');
-
-                const alanlar = [
-                    { id: 'asilAlacak', etiket: 'As[ıi]l\\s*Alacak', tur: 'tutar' },
-                    { id: 'akdiFaiz', etiket: 'Akdi\\s*Faiz', tur: 'tutar' },
-                    { id: 'islemişFaiz', etiket: '[İIıi]şlemiş\\s*Faiz', tur: 'tutar' },
-                    { id: 'bsmv', etiket: 'BSMV', tur: 'tutar' },
-                    { id: 'ihtarnameMasrafi', etiket: '[İIıi]htarname\\s*Masraf', tur: 'tutar' }
-                ];
-
-                let bulunanSayisi = 0;
-                const eksikEtiketler = [];
-
-                alanlar.forEach(({ id, etiket }) => {
-                    const deger = ocrEtiketOncesiTutar(text, etiket);
-                    if (deger) {
-                        document.getElementById(id).value = deger;
-                        bulunanSayisi++;
-                    } else {
-                        eksikEtiketler.push(id);
-                    }
+                const sonuc = await ocrCokluOku(file, (sira, toplam) => {
+                    durumMetni.innerHTML = `<span class="text-amber-600 font-bold">🔎 "${file.name}" taranıyor (${sira}/${toplam}. okuma; ilk kullanımda dil verisi indirilir, biraz sürebilir)...</span>`;
                 });
-
-                let faizOraniMatch = text.match(/Temerr[üu]t\s*Faiz\s*Oran[ıi]?\s*%\s*([0-9]+(?:[.,][0-9]+)?)/i)
-                    || text.match(/As[ıi]l\s*Alacak[\s\S]{0,60}?%\s*([0-9]+(?:[.,][0-9]+)?)/i);
-                if (faizOraniMatch) {
-                    document.getElementById('yillikFaizOrani').value = faizOraniMatch[1];
-                    bulunanSayisi++;
-                } else {
-                    eksikEtiketler.push('yillikFaizOrani');
-                }
-
-                if (bulunanSayisi === 0) {
-                    durumMetni.innerHTML = `<span class="text-red-600 font-bold">❌ Görselden hiçbir değer okunamadı. Görselin net/düz (eğik olmayan) olduğundan emin olup tekrar deneyin, ya da alanları elle girin.</span>`;
-                } else {
-                    const eksikUyari = eksikEtiketler.length > 0
-                        ? ` ${eksikEtiketler.length} alan okunamadı, elle kontrol edin.`
-                        : '';
-                    durumMetni.innerHTML = `<span class="text-emerald-600 font-bold">✅ ${bulunanSayisi}/6 alan okundu.${eksikUyari} Rakamları orijinal görüntüyle mutlaka karşılaştırın.</span>`;
-                }
-
-                hesaplaVeGuncelle();
+                ayristirilanVeriyiUygula(sonuc, durumMetni, 'gorsel');
             } catch (err) {
                 console.error(err);
                 durumMetni.innerHTML = `<span class="text-red-600 font-bold">❌ Görsel okunamadı: ${err.message}</span>`;
             }
+        }
+
+        // Takip talebi metni (UYAP belgesinden kopyalanıp yapıştırılan) OCR'sız, doğrudan ayrıştırılır.
+        function metindenVeriOku() {
+            const metin = document.getElementById('talepMetni').value;
+            const durumMetni = document.getElementById('metinDurumu');
+            ayristirilanVeriyiUygula({ ...ocrAlacakGruplariniAyristir(metin), celiskiliAlanSayisi: 0 }, durumMetni, 'metin');
+        }
+
+        function ayristirilanVeriyiUygula(sonuc, durumMetni, kaynak) {
+            if (sonuc.okunanTutarSayisi === 0) {
+                durumMetni.innerHTML = kaynak === 'metin'
+                    ? `<span class="text-red-600 font-bold">❌ Metinde alacak kalemi bulunamadı. Takip talebindeki "TUTAR TL Asıl alacak ..." satırlarını yapıştırdığınızdan emin olun.</span>`
+                    : `<span class="text-red-600 font-bold">❌ Görselden hiçbir değer okunamadı. Takip talebi metnini kopyalayıp aşağıdaki kutuya yapıştırmayı deneyin, ya da alanları elle girin.</span>`;
+                return;
+            }
+
+            if (sonuc.gruplar.length > 0) {
+                document.getElementById('alacakGruplariListesi').innerHTML = "";
+                sonuc.gruplar.forEach(g => alacakGrubuEkle(g));
+            }
+            if (sonuc.ihtarnameMasrafi) document.getElementById('ihtarnameMasrafi').value = sonuc.ihtarnameMasrafi;
+            const takipInput = document.getElementById('takipTarihi');
+            if (sonuc.takipTarihi && !takipInput.value) takipInput.value = sonuc.takipTarihi;
+
+            // Okunan kalemlerin toplamı, takip talebindeki "Toplam Alacak" ile karşılaştırılarak OCR hatası yakalanır.
+            const okunanToplam = yuvarla2(alacakGruplariniOku().reduce((s, g) => s + g.toplam, 0)
+                + parseTrNumber(document.getElementById('ihtarnameMasrafi').value));
+            let kontrol = ` Okunan kalemlerin toplamı ${formatTrCurrency(okunanToplam)} TL; takip talebindeki toplamla karşılaştırın.`;
+            if (sonuc.toplamAlacak) {
+                const talepToplami = parseTrNumber(sonuc.toplamAlacak);
+                kontrol = Math.abs(okunanToplam - talepToplami) < 0.01
+                    ? ` Toplam, takip talebindeki ${formatTrCurrency(talepToplami)} TL ile tutuyor.`
+                    : ` <span class="text-red-600">Dikkat: okunan kalemlerin toplamı ${formatTrCurrency(okunanToplam)} TL, takip talebindeki toplam ${formatTrCurrency(talepToplami)} TL; eksik/hatalı okunan kalem var.</span>`;
+            }
+            const satirUyari = sonuc.okunamayanSatirlar.length > 0
+                ? ` <span class="text-red-600">Tutarı okunamayan satırlar (elle girin): ${sonuc.okunamayanSatirlar.map(s => `"${s.replace(/[<>&"]/g, '')}"`).join(', ')}.</span>`
+                : '';
+            const oranUyari = sonuc.duzeltilenOranSayisi > 0
+                ? ` ${sonuc.duzeltilenOranSayisi} faiz oranında "%" işareti bozuk okunduğu için oran tahmin edildi, oranları kontrol edin.`
+                : '';
+            const celiskiUyari = sonuc.celiskiliAlanSayisi > 0
+                ? ` ${sonuc.celiskiliAlanSayisi} alanda farklı okumalar çıktı, çoğunluğun değeri alındı.`
+                : '';
+            durumMetni.innerHTML = `<span class="text-emerald-600 font-bold">✅ ${sonuc.gruplar.length} asıl alacak kalemi, ${sonuc.okunanTutarSayisi} tutar okundu.${kontrol}${satirUyari}${oranUyari}${celiskiUyari}${kaynak === 'gorsel' ? ' Rakamları orijinal görüntüyle mutlaka karşılaştırın.' : ''}</span>`;
+
+            hesaplaVeGuncelle();
         }
 
         function kademeleriBaslat() {
@@ -510,12 +749,16 @@
         // - Faiz yalnızca asıl alacak üzerinden basit faiz olarak işler (faize faiz yürütülmez), üzerine %5 BSMV eklenir.
         // - Formül: anapara × oran × gün / (100 × gün esası). Yargıtay içtihadına göre gün esası 365'tir;
         //   360 ancak kredi sözleşmesinde açıkça kararlaştırılmışsa kullanılmalıdır.
-        // - "tbk100" yönteminde her ara taksit önce birikmiş faiz+BSMV'ye, sonra diğer fer'i kalemlere
-        //   (vekalet ücreti, harç, masraf, takip öncesi/sonrası işlemiş faiz vb.), en son asıl alacağa mahsup edilir.
-        //   "anapara" yönteminde taksit doğrudan asıl alacaktan düşülür (TBK m.100'e aykırı, borçlu lehine).
+        // - Her ara taksit önce asıl alacaktan düşülür; anapara bittikten sonra kalan ödeme birikmiş faize,
+        //   en son diğer fer'i kalemlere (vekalet ücreti, harç, masraf, takip öncesi/sonrası işlemiş faiz vb.) gider.
+        //   Faiz yalnızca kalan anapara üzerinden işlediğinden, anapara bittiğinde taahhüt sonrası faiz de durur.
         // - Son taksit, o tarihe kadar kalan tüm borcu (asıl alacak + fer'iler + birikmiş faiz) kapatır.
-        function faizPlaniHesapla({ asilAlacak, feriBakiye, yillikFaizOrani, gunBazi, mahsupYontemi, baslangicTarihi, araTaksitler, sonTaksitTarihi }) {
-            let anapara = asilAlacak;
+        // - Birden çok asıl alacak varsa (anaparalar: [{ tutar, oran }]) her biri kendi oranıyla faiz işletir;
+        //   faizsiz istenen asıl alacak oran 0 ile gelir. Anaparaya düşen ödeme, asıl alacaklar arasında
+        //   kalan bakiyeleri oranında paylaştırılır.
+        function faizPlaniHesapla({ anaparalar, feriBakiye, gunBazi, baslangicTarihi, araTaksitler, sonTaksitTarihi }) {
+            const bakiyeler = anaparalar.map(a => ({ ...a }));
+            const toplamAnapara = () => bakiyeler.reduce((s, a) => s + a.tutar, 0);
             let feri = feriBakiye;
             let birikmisFaiz = 0;
             let toplamFaizHam = 0;
@@ -525,10 +768,11 @@
 
             const faizIslet = (tarih) => {
                 const gun = getDaysBetween(oncekiTarih, tarih);
-                const faiz = anapara * (yillikFaizOrani / 100) * gun / gunBazi;
+                const faiz = bakiyeler.reduce((s, a) => s + a.tutar * (a.oran / 100) * gun / gunBazi, 0);
+                const faizeEsasAnapara = bakiyeler.filter(a => a.oran > 0).reduce((s, a) => s + a.tutar, 0);
                 toplamFaizHam += faiz;
                 birikmisFaiz += faiz * (1 + BSMV_ORANI);
-                const donem = { baslangic: oncekiTarih, bitis: tarih, gun, faizeEsasAnapara: anapara, faiz, bsmv: faiz * BSMV_ORANI };
+                const donem = { baslangic: oncekiTarih, bitis: tarih, gun, faizeEsasAnapara, faiz, bsmv: faiz * BSMV_ORANI };
                 oncekiTarih = tarih;
                 return donem;
             };
@@ -536,15 +780,15 @@
             const mahsupEt = (odeme) => {
                 let kalan = odeme;
                 const dus = (bakiye) => { const d = Math.min(kalan, bakiye); kalan -= d; return d; };
-                if (mahsupYontemi === 'anapara') {
-                    anapara -= dus(anapara);
-                    birikmisFaiz -= dus(birikmisFaiz);
-                    feri -= dus(feri);
-                } else {
-                    birikmisFaiz -= dus(birikmisFaiz);
-                    feri -= dus(feri);
-                    anapara -= dus(anapara);
-                }
+                const anaparadanDus = () => {
+                    const toplam = toplamAnapara();
+                    if (toplam <= 0) return;
+                    const d = dus(toplam);
+                    bakiyeler.forEach(a => { a.tutar -= d * a.tutar / toplam; });
+                };
+                anaparadanDus();
+                birikmisFaiz -= dus(birikmisFaiz);
+                feri -= dus(feri);
                 return kalan;
             };
 
@@ -552,13 +796,13 @@
                 const donem = faizIslet(t.tarihObj);
                 const fazlaOdeme = mahsupEt(t.tutar);
                 araTaksitToplami += t.tutar;
-                donemler.push({ ...donem, odeme: t.tutar, fazlaOdeme, kalanAnapara: anapara, kalanFeri: feri, kalanFaiz: birikmisFaiz });
+                donemler.push({ ...donem, odeme: t.tutar, fazlaOdeme, kalanAnapara: toplamAnapara(), kalanFeri: feri, kalanFaiz: birikmisFaiz });
             });
 
             let sonTaksitTutari = 0;
             if (sonTaksitTarihi) {
                 const donem = faizIslet(sonTaksitTarihi);
-                sonTaksitTutari = anapara + feri + birikmisFaiz;
+                sonTaksitTutari = toplamAnapara() + feri + birikmisFaiz;
                 donemler.push({ ...donem, odeme: sonTaksitTutari, fazlaOdeme: 0, kalanAnapara: 0, kalanFeri: 0, kalanFaiz: 0, sonTaksit: true });
             }
 
@@ -582,16 +826,8 @@
         }
 
         function hesaplaVeGuncelle() {
-            const asilAlacak = parseTrNumber(document.getElementById('asilAlacak').value);
-            const yillikFaizOrani = parseTrNumber(document.getElementById('yillikFaizOrani').value);
-            const akdiFaiz = parseTrNumber(document.getElementById('akdiFaiz').value);
-            const islemişFaiz = parseTrNumber(document.getElementById('islemişFaiz').value);
+            const alacakGruplari = alacakGruplariniOku();
             const ihtarnameMasrafi = parseTrNumber(document.getElementById('ihtarnameMasrafi').value);
-            const bsmv = parseTrNumber(document.getElementById('bsmv').value);
-            const hesapNo = document.getElementById('hesapNo').value;
-            const akdiFaizOrani = parseTrNumber(document.getElementById('akdiFaizOrani').value);
-            const akdiFaizBaslangicVal = document.getElementById('akdiFaizBaslangic').value;
-            const hesapKesimTarihiVal = document.getElementById('hesapKesimTarihi').value;
 
             const takipTaahhutArasiFaiz = parseTrNumber(document.getElementById('takipTaahhutArasiFaiz').value);
             const vekaletUcreti = parseTrNumber(document.getElementById('vekaletUcreti').value);
@@ -608,16 +844,18 @@
             const taahhutTarihiVal = document.getElementById('taahhutTarihi').value;
             const takipTarihiVal = document.getElementById('takipTarihi').value;
 
-            const akdiFaizBaslangicStr = formatDateInputTr(akdiFaizBaslangicVal);
-            const hesapKesimTarihiStr = formatDateInputTr(hesapKesimTarihiVal);
             const takipTarihiStr = formatDateInputTr(takipTarihiVal);
 
-            const toplamAlacak = asilAlacak + akdiFaiz + islemişFaiz + ihtarnameMasrafi + bsmv;
+            const toplamAlacak = alacakGruplari.reduce((s, g) => s + g.toplam, 0) + ihtarnameMasrafi;
+            const anaparalar = alacakGruplari
+                .flatMap(g => [{ tutar: g.asilAlacak, oran: g.faizOrani }, { tutar: g.faizsizAsil, oran: 0 }])
+                .filter(a => a.tutar > 0);
+            const toplamAnapara = anaparalar.reduce((s, a) => s + a.tutar, 0);
+            const faizOranlari = [...new Set(alacakGruplari.filter(g => g.asilAlacak > 0).map(g => g.faizOrani))];
             const toplamHarc = basvuruHarcı + pesinHarc + tahsilHarci;
             const toplamMasraf = tebligatGideri + masrafAvansi;
 
             const gunBazi = parseInt(document.getElementById('gunBazi').value, 10) || 365;
-            const mahsupYontemi = document.getElementById('mahsupYontemi').value;
 
             let taahhutDate = parseDateString(taahhutTarihiVal) || new Date(new Date().setHours(0, 0, 0, 0));
 
@@ -666,18 +904,18 @@
             if (gunBazi === 360) {
                 uyarilar.push(`Faiz 360 gün esasıyla hesaplanıyor. Yargıtay, yılı 365 gün kabul etmektedir; 360 gün yalnızca kredi sözleşmesinde açıkça kararlaştırılmışsa savunulabilir, aksi halde fazla faiz talebi borçlu itirazıyla düzeltilir.`);
             }
-            if (mahsupYontemi === 'anapara') {
-                uyarilar.push(`Taksitler doğrudan asıl alacaktan düşülüyor. Yargıtay 12. HD'ye göre takipten sonraki kısmi ödemeler TBK m.100 uyarınca önce faiz, vekalet ücreti ve masraflara mahsup edilmelidir; bu yöntem faizi olması gerekenden az (alacaklı aleyhine) hesaplar.`);
-            }
+            alacakGruplari.forEach((g, i) => {
+                if (g.asilAlacak > 0 && !g.faizOrani) {
+                    uyarilar.push(`${i + 1}. asıl alacağın temerrüt faiz oranı girilmedi; bu alacağa taahhüt sonrası faiz işletilmedi.`);
+                }
+            });
 
             const guncelBakiye = toplamAlacak + takipTaahhutArasiFaiz + vekaletUcreti + toplamHarc + toplamMasraf;
 
             const plan = faizPlaniHesapla({
-                asilAlacak,
-                feriBakiye: guncelBakiye - asilAlacak,
-                yillikFaizOrani,
+                anaparalar,
+                feriBakiye: guncelBakiye - toplamAnapara,
                 gunBazi,
-                mahsupYontemi,
                 baslangicTarihi: taahhutDate,
                 araTaksitler,
                 sonTaksitTarihi: sonTaksit ? sonTaksit.tarihObj : null
@@ -700,9 +938,7 @@
             let taahhutTarihiFormatli = formatDateTr2(taahhutDate);
             let bitisTarihiStr = sonTaksitTarihiStr || taahhutTarihiFormatli;
 
-            const hesapNoOnEk = hesapNo ? `${hesapNo} - ` : "";
-            const akdiFaizAralik = (akdiFaizBaslangicStr || hesapKesimTarihiStr) ? ` (${akdiFaizBaslangicStr}-${hesapKesimTarihiStr})` : "";
-            const islemisFaizAralik = (hesapKesimTarihiStr || takipTarihiStr) ? ` (${hesapKesimTarihiStr}-${takipTarihiStr})` : "";
+            const alacakSatirlari = alacakKalemSatirlari(alacakGruplari, takipTarihiStr);
             const araDonemAralik = takipTarihiStr ? ` (${takipTarihiStr}-${taahhutTarihiFormatli} TARİHLERİ ARASI)` : "";
             const tahsilHarciOraniStr = tahsilHarciOrani ? ` ( %${tahsilHarciOrani} )` : "";
 
@@ -726,10 +962,7 @@
                 <div class="text-center font-bold mb-3">T.C.<br>${icraDairesi}<br>DOSYA NO: ${dosyaNo}</div>
                 ${acilisCumlesi ? `<p class="mb-3">${acilisCumlesi}</p>` : ""}
                 <div class="space-y-1 font-mono text-slate-800">
-                    <div><b>${formatTrCurrency(asilAlacak)}</b> TL ${hesapNoOnEk}Asıl Alacak (Temerrüt Faiz Oranı %${yillikFaizOrani}'dır.)</div>
-                    <div><b>${formatTrCurrency(akdiFaiz)}</b> TL ${hesapNoOnEk}Akdi Faiz${akdiFaizOrani ? ' %' + akdiFaizOrani : ''}${akdiFaizAralik}</div>
-                    <div><b>${formatTrCurrency(islemişFaiz)}</b> TL ${hesapNoOnEk}İşlemiş Faiz${yillikFaizOrani ? ' %' + yillikFaizOrani : ''}${islemisFaizAralik}</div>
-                    <div><b>${formatTrCurrency(bsmv)}</b> TL ${hesapNoOnEk}BSMV %5 Toplamı</div>
+                    ${alacakSatirlari.map(s => `<div><b>${formatTrCurrency(s.tutar)}</b> TL ${s.metin}</div>`).join('')}
                     <div><b>${formatTrCurrency(ihtarnameMasrafi)}</b> TL İhtarname Masrafları</div>
                     <div class="border-b border-slate-300 pb-1 font-bold"><b>${formatTrCurrency(toplamAlacak)}</b> TL Toplam Alacak</div>
 
@@ -774,11 +1007,10 @@
                 </div>
             </div>`;
             document.getElementById('onizlemeKutusu').innerHTML = html;
-            planDokumuCiz(plan, gunBazi, mahsupYontemi, yillikFaizOrani);
+            planDokumuCiz(plan, gunBazi, faizOranlari);
 
             window.hesaplananVeriler = {
-                asilAlacak, yillikFaizOrani, akdiFaiz, islemişFaiz, ihtarnameMasrafi, bsmv, toplamAlacak,
-                hesapNo, akdiFaizOrani, akdiFaizBaslangicStr, hesapKesimTarihiStr, takipTarihiStr,
+                alacakSatirlari, ihtarnameMasrafi, toplamAlacak, takipTarihiStr,
                 takipTaahhutArasiFaiz, vekaletUcreti, basvuruHarcı, pesinHarc, tahsilHarci, tahsilHarciOrani, toplamHarc,
                 tebligatGideri, masrafAvansi, toplamMasraf,
                 guncelBakiye, toplamTaahhutSonrasiFaizVergili, toplamOdenecekMeblag, taksitListesiData, acilisCumlesi,
@@ -792,13 +1024,12 @@
             document.getElementById('planDokumu').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        function planDokumuCiz(plan, gunBazi, mahsupYontemi, yillikFaizOrani) {
+        function planDokumuCiz(plan, gunBazi, faizOranlari) {
             const kutu = document.getElementById('planDokumu');
             if (plan.donemler.length === 0) {
                 kutu.innerHTML = `<div class="p-3 text-slate-500">Taahhüt tarihi ve taksit tarihleri girildiğinde dönem dönem faiz dökümü burada görünür.</div>`;
                 return;
             }
-            const yontemMetni = mahsupYontemi === 'anapara' ? 'taksit doğrudan asıl alacaktan' : 'TBK m.100: önce faiz, sonra masraflar, en son asıl alacak';
             const satirlar = plan.donemler.map((p, i) => `
                 <tr class="${p.sonTaksit ? 'bg-amber-50 font-semibold' : ''} border-t border-slate-100">
                     <td class="px-2 py-1">${i + 1}${p.sonTaksit ? ' (son)' : ''}</td>
@@ -823,7 +1054,7 @@
                     <tbody>${satirlar}</tbody>
                 </table>
                 <div class="p-2 bg-slate-50 text-slate-600 border-t border-slate-200">
-                    Formül: anapara × %${yillikFaizOrani} × gün / ${gunBazi} · BSMV %${BSMV_ORANI * 100} · Mahsup: ${yontemMetni}.
+                    Formül: ${faizOranlari.length > 1 ? `her asıl alacak kendi oranıyla (%${faizOranlari.join(', %')})` : `%${faizOranlari[0] || 0}`}: anapara × oran × gün / ${gunBazi} · BSMV %${BSMV_ORANI * 100} · Mahsup: taksit önce asıl alacaktan, anapara bitince faiz ve masraflardan.
                     Toplam faiz ${formatTrCurrency(plan.toplamFaizHam)} TL + BSMV = <b>${formatTrCurrency(plan.toplamFaizVergili)} TL</b>.
                 </div>`;
         }
@@ -835,9 +1066,6 @@
             const d = window.hesaplananVeriler;
             const { Document, Packer, Paragraph, TextRun, AlignmentType, TabStopType } = window.docx;
 
-            const hesapNoOnEk = d.hesapNo ? `${d.hesapNo} - ` : "";
-            const akdiFaizAralik = (d.akdiFaizBaslangicStr || d.hesapKesimTarihiStr) ? ` (${d.akdiFaizBaslangicStr}-${d.hesapKesimTarihiStr})` : "";
-            const islemisFaizAralik = (d.hesapKesimTarihiStr || d.takipTarihiStr) ? ` (${d.hesapKesimTarihiStr}-${d.takipTarihiStr})` : "";
             const araDonemAralik = d.takipTarihiStr ? ` (${d.takipTarihiStr}-${d.taahhutTarihiFormatli} TARİHLERİ ARASI)` : "";
             const tahsilHarciOraniStr = d.tahsilHarciOrani ? ` ( %${d.tahsilHarciOrani} )` : "";
 
@@ -852,10 +1080,7 @@
             }
 
             docChildren.push(
-                new Paragraph({ text: `${formatTrCurrency(d.asilAlacak)} TL ${hesapNoOnEk}Asıl Alacak (Temerrüt Faiz Oranı %${d.yillikFaizOrani}'dır.)`, size: 20 }),
-                new Paragraph({ text: `${formatTrCurrency(d.akdiFaiz)} TL ${hesapNoOnEk}Akdi Faiz${d.akdiFaizOrani ? ' %' + d.akdiFaizOrani : ''}${akdiFaizAralik}`, size: 20 }),
-                new Paragraph({ text: `${formatTrCurrency(d.islemişFaiz)} TL ${hesapNoOnEk}İşlemiş Faiz${d.yillikFaizOrani ? ' %' + d.yillikFaizOrani : ''}${islemisFaizAralik}`, size: 20 }),
-                new Paragraph({ text: `${formatTrCurrency(d.bsmv)} TL ${hesapNoOnEk}BSMV %5 Toplamı`, size: 20 }),
+                ...d.alacakSatirlari.map(s => new Paragraph({ text: `${formatTrCurrency(s.tutar)} TL ${s.metin}`, size: 20 })),
                 new Paragraph({ text: `${formatTrCurrency(d.ihtarnameMasrafi)} TL İhtarname Masrafları`, size: 20 }),
                 new Paragraph({ text: `${formatTrCurrency(d.toplamAlacak)} TL Toplam Alacak`, bold: true, size: 20, spacing: { after: 150 } }),
 
