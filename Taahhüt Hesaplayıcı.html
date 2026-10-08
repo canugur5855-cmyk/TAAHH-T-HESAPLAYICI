@@ -174,8 +174,12 @@
                             <option value="360">360 gün (yalnızca sözleşmede açık hüküm varsa)</option>
                         </select>
                     </div>
-                    <div class="text-[11px] text-slate-500 self-end pb-1">
-                        Taksitler önce asıl alacaktan düşülür; faiz kalan anapara üzerinden işler ve anapara bitince durur.
+                    <div>
+                        <label class="block text-[11px] font-medium text-slate-600 mb-1">Ara Taksitlerin Mahsup Sırası</label>
+                        <select id="mahsupYontemi" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" onchange="hesaplaVeGuncelle()">
+                            <option value="tbk100" selected>TBK m.100: önce faiz ve masraflar, sonra asıl alacak</option>
+                            <option value="anapara">Önce asıl alacaktan düş (faiz anapara bitince durur)</option>
+                        </select>
                     </div>
                 </div>
 
@@ -749,14 +753,15 @@
         // - Faiz yalnızca asıl alacak üzerinden basit faiz olarak işler (faize faiz yürütülmez), üzerine %5 BSMV eklenir.
         // - Formül: anapara × oran × gün / (100 × gün esası). Yargıtay içtihadına göre gün esası 365'tir;
         //   360 ancak kredi sözleşmesinde açıkça kararlaştırılmışsa kullanılmalıdır.
-        // - Her ara taksit önce asıl alacaktan düşülür; anapara bittikten sonra kalan ödeme birikmiş faize,
-        //   en son diğer fer'i kalemlere (vekalet ücreti, harç, masraf, takip öncesi/sonrası işlemiş faiz vb.) gider.
-        //   Faiz yalnızca kalan anapara üzerinden işlediğinden, anapara bittiğinde taahhüt sonrası faiz de durur.
+        // - "tbk100" yönteminde her ara taksit önce birikmiş faiz+BSMV'ye, sonra diğer fer'i kalemlere
+        //   (vekalet ücreti, harç, masraf, takip öncesi/sonrası işlemiş faiz vb.), en son asıl alacağa mahsup edilir.
+        //   "anapara" yönteminde taksit önce asıl alacaktan, anapara bitince faize ve fer'ilere düşülür.
+        //   Her iki yöntemde de faiz yalnızca kalan anapara üzerinden işler; anapara bittiğinde faiz de durur.
         // - Son taksit, o tarihe kadar kalan tüm borcu (asıl alacak + fer'iler + birikmiş faiz) kapatır.
         // - Birden çok asıl alacak varsa (anaparalar: [{ tutar, oran }]) her biri kendi oranıyla faiz işletir;
         //   faizsiz istenen asıl alacak oran 0 ile gelir. Anaparaya düşen ödeme, asıl alacaklar arasında
         //   kalan bakiyeleri oranında paylaştırılır.
-        function faizPlaniHesapla({ anaparalar, feriBakiye, gunBazi, baslangicTarihi, araTaksitler, sonTaksitTarihi }) {
+        function faizPlaniHesapla({ anaparalar, feriBakiye, gunBazi, mahsupYontemi, baslangicTarihi, araTaksitler, sonTaksitTarihi }) {
             const bakiyeler = anaparalar.map(a => ({ ...a }));
             const toplamAnapara = () => bakiyeler.reduce((s, a) => s + a.tutar, 0);
             let feri = feriBakiye;
@@ -786,9 +791,15 @@
                     const d = dus(toplam);
                     bakiyeler.forEach(a => { a.tutar -= d * a.tutar / toplam; });
                 };
-                anaparadanDus();
-                birikmisFaiz -= dus(birikmisFaiz);
-                feri -= dus(feri);
+                if (mahsupYontemi === 'anapara') {
+                    anaparadanDus();
+                    birikmisFaiz -= dus(birikmisFaiz);
+                    feri -= dus(feri);
+                } else {
+                    birikmisFaiz -= dus(birikmisFaiz);
+                    feri -= dus(feri);
+                    anaparadanDus();
+                }
                 return kalan;
             };
 
@@ -856,6 +867,7 @@
             const toplamMasraf = tebligatGideri + masrafAvansi;
 
             const gunBazi = parseInt(document.getElementById('gunBazi').value, 10) || 365;
+            const mahsupYontemi = document.getElementById('mahsupYontemi').value;
 
             let taahhutDate = parseDateString(taahhutTarihiVal) || new Date(new Date().setHours(0, 0, 0, 0));
 
@@ -916,6 +928,7 @@
                 anaparalar,
                 feriBakiye: guncelBakiye - toplamAnapara,
                 gunBazi,
+                mahsupYontemi,
                 baslangicTarihi: taahhutDate,
                 araTaksitler,
                 sonTaksitTarihi: sonTaksit ? sonTaksit.tarihObj : null
@@ -1007,7 +1020,7 @@
                 </div>
             </div>`;
             document.getElementById('onizlemeKutusu').innerHTML = html;
-            planDokumuCiz(plan, gunBazi, faizOranlari);
+            planDokumuCiz(plan, gunBazi, mahsupYontemi, faizOranlari);
 
             window.hesaplananVeriler = {
                 alacakSatirlari, ihtarnameMasrafi, toplamAlacak, takipTarihiStr,
@@ -1024,7 +1037,7 @@
             document.getElementById('planDokumu').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        function planDokumuCiz(plan, gunBazi, faizOranlari) {
+        function planDokumuCiz(plan, gunBazi, mahsupYontemi, faizOranlari) {
             const kutu = document.getElementById('planDokumu');
             if (plan.donemler.length === 0) {
                 kutu.innerHTML = `<div class="p-3 text-slate-500">Taahhüt tarihi ve taksit tarihleri girildiğinde dönem dönem faiz dökümü burada görünür.</div>`;
@@ -1054,7 +1067,7 @@
                     <tbody>${satirlar}</tbody>
                 </table>
                 <div class="p-2 bg-slate-50 text-slate-600 border-t border-slate-200">
-                    Formül: ${faizOranlari.length > 1 ? `her asıl alacak kendi oranıyla (%${faizOranlari.join(', %')})` : `%${faizOranlari[0] || 0}`}: anapara × oran × gün / ${gunBazi} · BSMV %${BSMV_ORANI * 100} · Mahsup: taksit önce asıl alacaktan, anapara bitince faiz ve masraflardan.
+                    Formül: ${faizOranlari.length > 1 ? `her asıl alacak kendi oranıyla (%${faizOranlari.join(', %')})` : `%${faizOranlari[0] || 0}`}: anapara × oran × gün / ${gunBazi} · BSMV %${BSMV_ORANI * 100} · Mahsup: ${mahsupYontemi === 'anapara' ? 'taksit önce asıl alacaktan, anapara bitince faiz ve masraflardan' : 'TBK m.100: önce faiz, sonra masraflar, en son asıl alacak'}.
                     Toplam faiz ${formatTrCurrency(plan.toplamFaizHam)} TL + BSMV = <b>${formatTrCurrency(plan.toplamFaizVergili)} TL</b>.
                 </div>`;
         }
